@@ -1,0 +1,14 @@
+{
+  "name": "betl",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node scripts/test.js"
+  },
+  "author": "",
+  "license": "ISC"
+}

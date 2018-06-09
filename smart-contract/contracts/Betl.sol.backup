@@ -1,0 +1,259 @@
+pragma solidity ^0.4.24;
+
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
+
+contract Betl is Ownable {
+  using SafeMath for uint;
+
+  uint private constant FEE_PERCENT = 1;
+  uint private constant MIN_TIMEOUT = 1 minutes;
+  uint private constant MODE_WHATEVER = 0;       // usecase for modes?
+
+  uint private constant STATUS_INACTIVE = 0;
+  uint private constant STATUS_OPEN = 1;
+  uint private constant STATUS_CLOSED = 2;
+  uint private constant STATUS_FINISHED = 3;
+  uint private constant STATUS_CANCELLED = 4;
+  uint private constant STATUS_TIMEOUT = 5;
+
+  // Eventually divide into RoundConfig and RoundConfigExt. First one mandatory, latter optional
+  // Default config: one winner, who takes it all.
+  struct RoundConfig {
+    uint createdAt;
+    uint timeout;
+    bool hasFlexOptions;
+    uint minBet;
+    uint hostBonus; // or: add directly to roundstats += hostBonus
+    // Specifies payout distributions in case multiple winners are possible
+    // Example: When there are 3 winners, this array can be [60, 30, 10] ==> in percents, must sum to 100.
+    // winnerTiers.length <= numOptions
+    uint[] payoutTiers;
+  }
+
+  struct RoundOptions {
+    uint numOptions;
+    bytes32[] options;
+  }
+
+  // has to be aligned with RoundConfig(Ext)
+  struct RoundResults {
+    // can only contain 1 winner, or multiple ones. Primary winner specified first followed by lower tier orders in DESC order
+    uint[] pickedOptions;
+    uint[] optionPayouts; // in wei
+  }
+
+  struct RoundStats {
+    uint numBets;
+    uint numPlayers;  // to expensive to maintain
+    uint poolSize;
+  }
+
+  struct Round {
+    uint id;
+    uint status;
+    RoundConfig config;
+    RoundOptions options;
+    RoundResults results;
+    RoundStats stats;
+    // hash(opt) =>         player  => bet
+    mapping(uint => mapping(address => uint)) playerBets;
+    // hash(opt) => totalBets
+    mapping(uint => uint) optionBets;
+  }
+
+  struct HostContext {
+    uint nextRoundId;
+    uint numRoundsCreated;
+    uint numRoundsSuccess;
+    uint numRoundsCancelled;
+    uint totalNumBets;
+    uint totalNumPlayers; // too expensive to maintain it
+    uint totalPoolSize;
+  }
+
+  //      name   => host
+  mapping(bytes32 => address) public hostNames;
+  //      host    => stats
+  mapping(address => HostContext) public hostContext;
+  //      host    =>       roundId => Round
+  mapping(address => mapping(uint => Round)) public rounds;
+
+  constructor () {
+  }
+
+
+  function getConfig (
+    uint createdAt,
+    uint timeout,
+    bool hasFlexOptions,
+    uint minBet,
+    uint hostBonus,
+    uint[] payoutTiers)
+    private
+    returns (RoundConfig)
+  {
+    return RoundConfig(
+      createdAt,
+      timeout,
+      hasFlexOptions,
+      minBet,
+      hostBonus,
+      payoutTiers
+    );
+  }
+
+  // ADD/TODO/TOTHINK?:
+  // - bool _hasMultipleWinners --> rather no. Host has no reason to cheat --> loss of reputation
+  // - modeCode usefulness?
+  function createRound (
+    bytes32[] _options,
+    bool _hasFlexOptions,
+    uint _timeout,
+    uint _minBet,
+    uint _hostShare,
+    uint[] _payoutTiers)
+    external
+    payable
+  {
+    uint numOptions = _options.length;
+    require(_timeout >= MIN_TIMEOUT);
+    require(numOptions >= 2 || _hasFlexOptions == true);
+    require(_hostShare <= 100);
+    if (_hasFlexOptions == false) {
+      require(_payoutTiers.length <= numOptions);
+    }
+
+    RoundConfig memory config = getConfig(now,
+      _timeout,
+      _hasFlexOptions,
+      _minBet,
+      msg.value,
+      _payoutTiers
+    );
+
+    RoundOptions memory options = RoundOptions(
+      numOptions,
+      _options
+    );
+
+    //uint[] pickedOptions;
+    //uint[] optionsPayout;
+    RoundResults memory results = RoundResults(
+      new uint[](0),
+      new uint[](0)
+    );
+
+    RoundStats memory stats = RoundStats(
+      0,
+      0,
+      msg.value
+    );
+
+    //mapping(uint => mapping(address => uint)) playerBets;
+    // hash(opt) => totalBets
+    //mapping(uint => uint) optionBets;
+
+    uint id = hostContext[msg.sender].nextRoundId;
+    Round memory round = Round(
+      id,
+      STATUS_OPEN,
+      config,
+      options,
+      results,
+      stats
+    );
+    
+    rounds[msg.sender][id] = round;
+
+    // post creation
+    hostContext[msg.sender].nextRoundId += 1;
+    hostContext[msg.sender].numRoundsCreated += 1;
+    hostContext[msg.sender].totalPoolSize += msg.value;
+  }
+
+  function addOptionForRound (address _host, uint8 _roundId, bytes32 _option) external {
+    //require: _host exists, _roundId exists
+    //require: round has STATUS_OPEN
+    //require: roundOptionsAreOpen == true, _option doesn't exist yet
+
+    // TODO: implementation
+  }
+
+  function pickWinner (uint8 _roundId, uint[] _winners) external {
+    //require: msg.sender must have round with _roundId
+    //require: round must be in STATUS_CLOSED
+    //require: _winners.length <= options.length
+    //require: timeout not reached yet
+
+    // redistribute payouts
+    // increment numRoundsSuccess for host
+    // emit ENDED-event
+    // set round.status = STATUS_FINISHED
+
+    // TODO: implementation
+  }
+
+  function bet (address _host, uint _roundId, uint optionId) external {
+    //require: _host with _roundId both exist
+    //require: round is in STATUS_OPEN
+    //require: msg.value <= round.minBet
+    //require: if hasFlexOptions == FALSE: require(_optionId < options.length)
+    //require: if hasFlexOptions == TRUE: check if optionId exists, if so, bet there, if not, create option and bet on it
+    //require: timeout not reached yet
+    // check, also msg.value
+    // check if host has roundId, check if round is active, check if option exists (in case options are predefined)
+
+    // HOST: increment totalNumBets
+    // HOST: totalPoolSize += msg.value
+    // HOST: 
+    // ROUND: numBets + 1
+    // ROUND: poolSize += msg.value
+    // ROUND:
+
+    // TODO: implementation
+  }
+
+  function claimPayout (address _host, uint _roundId) external {
+    //require: _host and _roundID exist
+    //require: roundId is in payout phase
+    //require: msg.sender is among winners (and has bets)
+
+    // TODO: implementation
+  }
+
+  function cancelRound (uint _roundId) external {
+    //require: host msg.sender must have round with _roundId
+    //require: round must be in cancellable == INACTIVE || OPEN
+
+    // set status = STATUS_CANCELLED
+    // increment numRoundsCancelled for host
+
+    // TODO: implementation
+  }
+
+
+
+  // function registerNameLookup (string _name)
+  //   external
+  //   //isNameFree
+  // {
+  //   // make sure the name is free
+  //   // or if it's not free, make sure it's the same user, just wanting to replace his name
+  //   // check that it's not contract address (?)
+  //   hostNames[_name] = msg.sender;
+  //   hostAddresses[msg.sender] = _name;
+  // }
+
+  // function deleteNameLookup (string _name, address _address)
+  //   external
+  //   onlyOwner
+  // {
+  //   hostNames[_name] = ZERO_ADDRESS;
+  //   hostAddresses[_address] = ''; // or empty bytes
+  // }
+
+  function () external payable {
+      revert(); 
+  }
+}

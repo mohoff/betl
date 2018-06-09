@@ -1,0 +1,15 @@
+h1 {
+	font-size: 400%;
+	font-weight: 400;
+	font-family: "KarmaticArcade", sans-serif;
+	letter-spacing: 20px;
+}
+
+.header {
+	text-align: center;
+	margin-top: 50px;
+}
+
+.subheader {
+	margin-bottom: 100px;
+}
