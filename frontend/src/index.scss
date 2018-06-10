@@ -1,9 +1,6 @@
 @import 'bulma/sass/utilities/initial-variables.sass';
 @import 'bulma/sass/utilities/functions.sass';
 
-
-
-
 @font-face {
   font-family: 'KarmaticArcade';
   src: url('./fonts/karmatic_arcade/ka1.ttf') format('truetype');
@@ -17,7 +14,10 @@
 $primary: rgb(114, 163, 255);
 $grey-lighter: #444;
 
+
 @import 'bulma/bulma.sass';
+
+$link: #000;
 
 body {
 	max-width: 960px;

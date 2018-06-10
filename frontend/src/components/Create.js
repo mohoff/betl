@@ -11,6 +11,7 @@ class Create extends Component {
       maxOptions: Number(process.env.REACT_APP_MAX_OPTIONS),
       options: new Array(numOptions).fill(''),
       showAddOption: false,
+      showRemoveOption: false
     }
   }
 
@@ -22,26 +23,36 @@ class Create extends Component {
     event.persist()
     event.preventDefault()
     this.setState(previousState => {
-      console.log(previousState.options)
       let opts = previousState.options.slice()
       opts[i] = event.target.value
-      console.log(opts)
-      let showButton = this.getShowAddOption(opts)
       return {
         options: opts,
-        showAddOption: showButton
+        showAddOption: this.shouldShowAddOption(opts)
       }
     })
   }
 
   handleAddOption = (event) => {
-    this.setState(previousState => {
-      let opts = previousState.options.slice()
+    this.setState(prevState => {
+      let opts = prevState.options.slice()
       opts.push('')
       return {
         options: opts,
-        numOptions: previousState.numOptions+1,
-        showAddOption: false
+        numOptions: prevState.numOptions+1,
+        showAddOption: false,
+        showRemoveOption: true,
+      }
+    })
+  }
+
+  handleRemoveOption = (event) => {
+    this.setState(prevState => {
+      let opts = prevState.options.slice(0, prevState.options.length-1)
+      return {
+        options: opts,
+        numOptions: prevState.numOptions-1,
+        showAddOption: opts.length < this.state.maxOptions,
+        showRemoveOption: opts.length > 2,
       }
     })
   }
@@ -50,7 +61,7 @@ class Create extends Component {
     return str === ''
   }
 
-  getShowAddOption = (options) => {
+  shouldShowAddOption = (options) => {
     if (options.some(this.isEmptyString) ||
       (this.state.numOptions === this.state.maxOptions)) {
       return false
@@ -67,9 +78,13 @@ class Create extends Component {
   render() {
     let optionsArray = []
     for (let i=0; i<this.state.numOptions; i++) {
-      //<label className="label">Option #{i+1}</label>
+      let isFirstElement = (i === 0)
+      let isSecondElement = (i === 1)
+      let isLastElement = (i === this.state.numOptions-1)
+      let isNotMaxElement = (i < this.state.maxOptions-1)
+      let isNoOptionEmpty = !this.state.options.some(this.isEmptyString)
+      
       optionsArray.push(
-        
         <div key={String(i+1)} className="field">    
           <div className="field has-addons">
             <p className="control">
@@ -78,7 +93,20 @@ class Create extends Component {
               </a>
             </p>
             <p className="control is-expanded">
-              <input className="input is-large" type="text" value={this.state.options[i]} onChange={(e) => this.handleOptionChange(i, e)} />
+              <input
+                className="input is-large"
+                type="text"
+                placeholder={isFirstElement ? 'Yes! Kappa' : isSecondElement? 'No.. FailFish' : ''}
+                value={this.state.options[i]}
+                autoFocus={isLastElement}
+                onChange={(e) => this.handleOptionChange(i, e)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' &&
+                    isLastElement && isNotMaxElement && isNoOptionEmpty) {
+                    this.handleAddOption()
+                  }
+                }}
+              />
             </p>
           </div>
         </div>
@@ -86,13 +114,19 @@ class Create extends Component {
     }
 
     const getAddButton = () => {
-      if (this.state.numOptions < this.state.maxOptions) {
-        return (
-            <button className="button" disabled={!this.state.showAddOption} onClick={this.handleAddOption} >
-              Add option
-            </button>
-        )
-      }
+      return (
+        <button className="button is-large" disabled={!this.state.showAddOption} onClick={this.handleAddOption} >
+          Add one
+        </button>
+      )
+    }
+
+    const getRemoveButton = () => {
+      return (
+        <button className="button is-large is-expanded" disabled={!this.state.showRemoveOption} onClick={this.handleRemoveOption} >
+          Remove one
+        </button>
+      )
     }
 
     return (
@@ -106,20 +140,25 @@ class Create extends Component {
             <div className="field">
               <label className="label is-large">Question</label>
               <div className="control">
-                <input className="input is-large" type="text" value={this.state.question} onChange={this.handleQuestionChange} />
+                <input
+                  className="input is-large"
+                  type="text"
+                  placeholder="Can I has first place? PogChamp"
+                  value={this.state.question}
+                  onChange={this.handleQuestionChange} />
               </div>
             </div>
 
             <div className="field">
               <label className="label is-large">Options</label>
               {optionsArray}
-              {getAddButton()}
+              {getAddButton()} {getRemoveButton()}
             </div>
 
             <br />
             <br />
             <div className="control has-text-centered">
-              <button className="button is-primary">Create</button>
+              <button className="button is-large is-primary">Create</button>
             </div>
           
         </div>

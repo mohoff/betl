@@ -1,9 +1,8 @@
 import React, { Component } from 'react'
 import {
-  BrowserRouter as Router,
+  BrowserRouter,
   Switch,
-  Route,
-  Link
+  Route
 } from 'react-router-dom'
 import { hot } from 'react-hot-loader'
 
@@ -20,16 +19,14 @@ import HostRound from './components/HostRound.js'
 import NotFound from './components/NotFound.js'
 
 class App extends Component {
-  constructor() {
-    super()
-  }
   render = () => {
     return (
       <div>
-        <Header />
+        
         <Web3Wrapper>
-          <div>
-            <Router>
+          <BrowserRouter>
+            <div>
+              <Header />           
               <Switch>
                 <Route exact path="/"
                   component={Home}/>
@@ -43,10 +40,11 @@ class App extends Component {
                   component={Host}/>
                 <Route component={NotFound} />
               </Switch>
-            </Router>
-          </div>
+              <Footer />
+            </div>
+          </BrowserRouter>
         </Web3Wrapper>
-        <Footer />
+        
       </div>
     )
   }

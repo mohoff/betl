@@ -1,6 +1,4 @@
-import React, { Component } from 'react'
-import { Redirect } from 'react-router-dom'
-
+import React from 'react'
 
 const NotFound = ({ round }) => (
   <div>
@@ -9,6 +7,5 @@ const NotFound = ({ round }) => (
 
   </div>
 )
-//<Redirect to='/'/>
 
 export default NotFound

@@ -38,7 +38,7 @@ class Web3Wrapper extends Component {
     this.state.web3 && this.state.web3.eth && this.state.web3.eth.getAccounts().then((accounts) => {
       if (Array.isArray(accounts) && accounts.length > 0) {
         const acc = accounts[0].toLowerCase()
-        if (this.state.account != acc) {
+        if (this.state.account !== acc) {
           this.setState({ account: acc })
           this.updateBalance()
         }
@@ -51,7 +51,7 @@ class Web3Wrapper extends Component {
   }
 
   updateBalance = () => {
-    if(this.state.account != '') {
+    if(this.state.account !== '') {
       this.state.web3 && this.state.web3.eth && this.state.web3.eth.getBalance(this.state.account).then(balance => {
         this.setState({
           balance: Number(this.state.web3.utils.fromWei(balance)).toFixed(3)
@@ -67,7 +67,7 @@ class Web3Wrapper extends Component {
 
   updateCurrentNetwork = () => {
     this.state.web3 && this.state.web3.eth && this.state.web3.eth.net.getId().then((network) => {
-      if (this.state.currentNetwork != network) {
+      if (this.state.currentNetwork !== network) {
         this.setState({ currentNetwork: network })
         this.updateBalance()  
       }

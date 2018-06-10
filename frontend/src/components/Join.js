@@ -1,9 +1,13 @@
 import React, { Component } from 'react'
 
-const Join = ({ round }) => (
-  <div>
-    <h3>{round}</h3>
-  </div>
-)
+class Join extends Component {
+  render = () => {
+    return (
+      <div>
+        <h3>{1+1}</h3>
+      </div>
+    )
+  }
+}
 
 export default Join

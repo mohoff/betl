@@ -9,7 +9,7 @@ class Home extends Component {
         <p>
           Betl let's you host and join bets<br/>
           on the Blockchain.
-          Get some <a href="https://coinmarketcap.com/currencies/ethereum/" target="_blank">
+          Get some <a href="https://coinmarketcap.com/currencies/ethereum/" target="_blank" rel="noopener noreferrer">
           Ether</a><br/>
           and good luck!
         </p>
