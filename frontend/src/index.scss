@@ -19,10 +19,6 @@ $grey-lighter: #444;
 
 @import 'bulma/bulma.sass';
 
-p {
-	margin: 20px 0px;
-}
-
 body {
 	max-width: 960px;
 	margin: 0px auto;
@@ -33,4 +29,9 @@ button {
 	font-weight: 300;
 	font-family: "KarmaticArcade", sans-serif;
 	letter-spacing: 5px;
+}
+
+.main {
+	max-width: 500px;
+	margin: 0 auto;
 }

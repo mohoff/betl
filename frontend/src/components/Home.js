@@ -1,12 +1,11 @@
 import React, { Component } from 'react'
 import { Link } from 'react-router-dom'
-import { Web3Context } from './generic/Web3Wrapper';
 import './Home.scss'
 
 class Home extends Component {
   render() {
     return (
-      <div className="has-text-centered welcome">
+      <div className="has-text-centered main">
         <p>
           Betl let's you host and join bets<br/>
           on the Blockchain.
@@ -48,9 +47,4 @@ class Home extends Component {
   }
 }
 
-// Wrap with React context consumer to provide web3 context
-export default (props) => (
-  <Web3Context.Consumer>
-    {context => <Home {...this.props} context={context} />}
-  </Web3Context.Consumer>
-)
+export default Home
