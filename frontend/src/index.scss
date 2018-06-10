@@ -11,9 +11,7 @@
   font-style: normal;
 }
 
-body {
-	max-width: 960px;
-}
+
 
 
 $primary: rgb(114, 163, 255);
@@ -23,4 +21,16 @@ $grey-lighter: #444;
 
 p {
 	margin: 20px 0px;
+}
+
+body {
+	max-width: 960px;
+	margin: 0px auto;
+	font-family: Verdana, sans-serif;
+}
+
+button {
+	font-weight: 300;
+	font-family: "KarmaticArcade", sans-serif;
+	letter-spacing: 5px;
 }

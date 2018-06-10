@@ -113,11 +113,10 @@ contract Betl is Ownable {
     }
     
     if(hostContext[msg.sender].lastRoundId != 0x00000000) {
-      uint lastRoundStatus = rounds[msg.sender][lastRoundId].status;
-      require(lastRoundStatus == Status.FINISHED ||
-        lastRoundStatus == Status.CANCELLED || 
-        lastRoundStatus == Status.TIMEOUT);
-
+      uint status = rounds[msg.sender][lastRoundId].status;
+      require(status == Status.FINISHED ||
+        status == Status.CANCELLED || 
+        status == Status.TIMEOUT);
     }
     require(hostContext[msg.sender].roundIdLookup[_roundId] == false);
 
@@ -206,6 +205,9 @@ contract Betl is Ownable {
     
 
     // TODO: redistribute payouts
+    //owner.transfer(1%)
+    //host.transfer(hostShare)
+    // payouts = remaining pool
 
 
     hostContext[_host].totalNumBets += rounds[_host][_roundId].stats.numBets;

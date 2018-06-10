@@ -9,6 +9,7 @@ import { hot } from 'react-hot-loader'
 
 import './App.css'
 
+import Web3Wrapper from './components/generic/Web3Wrapper.js'
 import Header from './components/sections/Header.js'
 import Footer from './components/sections/Footer.js'
 import Home from './components/Home.js'
@@ -18,26 +19,37 @@ import Host from './components/Host.js'
 import HostRound from './components/HostRound.js'
 import NotFound from './components/NotFound.js'
 
-const App = () => (
-  <div>
-    <Header />
-    <Router>
-      <Switch>
-        <Route exact path="/"
-          component={Home}/>
-        <Route path="/create"
-          component={Create}/>
-        <Route path="/join"
-          component={Join}/>
-        <Route path="/:hostId/:roundId"
-          component={HostRound}/>
-        <Route path="/:hostId"
-          component={Host}/>
-        <Route component={NotFound} />
-      </Switch>
-    </Router>
-    <Footer />
-  </div>
-)
+class App extends Component {
+  constructor() {
+    super()
+  }
+  render = () => {
+    return (
+      <div>
+        <Header />
+        <Web3Wrapper>
+          <div>
+            <Router>
+              <Switch>
+                <Route exact path="/"
+                  component={Home}/>
+                <Route path="/create"
+                  component={Create}/>
+                <Route path="/join"
+                  component={Join}/>
+                <Route path="/:hostId/:roundId"
+                  component={HostRound}/>
+                <Route path="/:hostId"
+                  component={Host}/>
+                <Route component={NotFound} />
+              </Switch>
+            </Router>
+          </div>
+        </Web3Wrapper>
+        <Footer />
+      </div>
+    )
+  }
+}
 
 export default hot(module)(App)
