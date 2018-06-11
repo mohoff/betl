@@ -22,7 +22,6 @@ class App extends Component {
   render = () => {
     return (
       <div>
-        
         <Web3Wrapper>
           <BrowserRouter>
             <div>
@@ -34,10 +33,10 @@ class App extends Component {
                   component={Create}/>
                 <Route path="/join"
                   component={Join}/>
-                <Route path="/:hostId/:roundId"
+                <Route path="/:hostName/:roundId"
                   component={HostRound}/>
-                <Route path="/:hostId"
-                  component={Host}/>
+                <Route path="/:hostName"
+                  render={Host}/>
                 <Route component={NotFound} />
               </Switch>
               <Footer />

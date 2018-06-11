@@ -134,35 +134,32 @@ class Create extends Component {
         <p className="has-text-centered">
           Enter your bet data here
         </p>
-        
         <div>
-          
-            <div className="field">
-              <label className="label is-large">Question</label>
-              <div className="control">
-                <input
-                  className="input is-large"
-                  type="text"
-                  placeholder="Can I has first place? PogChamp"
-                  value={this.state.question}
-                  onChange={this.handleQuestionChange} />
-              </div>
+          <div className="field">
+            <label className="label is-large">Question</label>
+            <div className="control">
+              <input
+                className="input is-large"
+                type="text"
+                placeholder="Can I has first place? PogChamp"
+                value={this.state.question}
+                onChange={this.handleQuestionChange} />
             </div>
+          </div>
 
-            <div className="field">
-              <label className="label is-large">Options</label>
-              {optionsArray}
-              {getAddButton()} {getRemoveButton()}
-            </div>
+          <div className="field">
+            <label className="label is-large">Options</label>
+            {optionsArray}
+            {getAddButton()} {getRemoveButton()}
+          </div>
 
-            <br />
-            <br />
-            <div className="control has-text-centered">
-              <button className="button is-large is-primary">Create</button>
-            </div>
-          
+          <br />
+          <br />
+          <div className="control has-text-centered">
+            <button className="button is-large is-primary">Create</button>
+          </div>
         </div>
-      </div>  
+      </div>
     );
   }
 }
@@ -170,6 +167,6 @@ class Create extends Component {
 // Wrap with React context consumer to provide web3 context
 export default (props) => (
   <Web3Context.Consumer>
-    {context => <Create {...this.props} context={context} />}
+    {context => <Create {...props} context={context} />}
   </Web3Context.Consumer>
 )
