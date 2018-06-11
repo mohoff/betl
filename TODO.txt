@@ -1,0 +1,8 @@
+
+
+TODO
+====
+
+- use dot notation when referencing react components. see 'jsx in depth' doc page
+- use map instead of for-loop when creating options JSX. see https://reactjs.org/docs/jsx-in-depth.html
+	* or use Repeat syntax (same doc page, bit further down)

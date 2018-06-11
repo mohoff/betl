@@ -71,7 +71,7 @@ class Create extends Component {
 
   handleSubmit(event) {
     console.log('submit button pressed')
-    event.preventDefault();
+    event.preventDefault()
     // this.props.web3.betl.create(...)
   }
 
