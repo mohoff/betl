@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
 import { Link } from 'react-router-dom'
 import { Web3Context } from './generic/Web3Wrapper'
+import '../utils/all.js'
 import './Join.scss'
 
 class Join extends Component {
@@ -12,10 +13,6 @@ class Join extends Component {
       isLoading: false,
       searchClicked: false,
     }
-  }
-
-  isAddress = (str) => {
-    return this.props.context.web3.utils.isAddress(str)
   }
 
   handleSearchChange = (event) => {

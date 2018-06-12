@@ -30,8 +30,8 @@ class Web3Wrapper extends Component {
   }
 
   updateMetaMaskStatus = () => {
-      this.updateAccounts()
-      this.updateCurrentNetwork()
+    this.updateAccounts()
+     this.updateCurrentNetwork()
   }
 
   updateAccounts = () => {
@@ -106,14 +106,37 @@ class Web3Wrapper extends Component {
                     target={this.state.targetNetwork}
                     current={this.state.currentNetwork} /> )
       }
+
+      const context = {
+        ...this.state,
+        isAddress: this.isAddress,
+        getNameFromAddress: this.getNameFromAddress
+      }
+
       return (
-        <Web3Context.Provider value={this.state}>
+        <Web3Context.Provider value={context}>
           {this.props.children}
         </Web3Context.Provider>
       )
     } else {
       return ( <MetaMaskLoading />)
     }
+  }
+
+  isAddress = (str) => {
+    return this.state.web3.utils.isAddress(str)
+  }
+
+  getNameFromAddress = (address) => {
+    return new Promise((resolve, reject) => {
+      // betlInstance.names(address).then(r => {
+      //   if (r == '') {
+      //     reject()
+      //   }
+      //   resolve(r)
+      // })
+      resolve('')
+    })
   }
 
 }

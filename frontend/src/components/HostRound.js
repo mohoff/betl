@@ -1,15 +1,19 @@
 import React, { Component } from 'react'
+import { Web3Context } from './generic/Web3Wrapper'
 import BetState from './BetState'
 
 class HostRound extends Component {
 
   constructor(props) {
   	super(props)
+    let id = props.match.params.hostId
     this.state = {
       host: {
-        name: props.match.params.hostName,
-        address: ''
+        exists: false,
+        name: props.context.isAddress(id) ? '' : id,
+        address: props.context.isAddress(id) ? id : '',
       },
+      roundExists: false,
       roundId: props.match.params.roundId,
       status: '',
       question: '',
@@ -28,29 +32,45 @@ class HostRound extends Component {
   }
   
   render() {
-
-    const BetState = (props) => {
-      
-    }
-
     return (
-      <div className="main">
-       
-          <section className="section">
-            <div className="field">
-              <label className="label is-large">{this.state.host.name}:</label>
+      <div className="main">       
+        <section className="section">
+          {this.state.host.exists && this.state.host.name !== '' &&
+            <HostInfo name={this.state.host.name}/>
+          }
+
+          {this.state.host.exists && this.state.roundExists &&
+            <BetState {...this.state} />
+          }
+
+          {!this.state.host.exists && 
+            <div className="is-italic has-text-centered">
+              Host not found
             </div>
-
-            <BetState status={this.state.status} />
-
-          </section>
-
+          }
+          
+          {this.state.host.exists && !this.state.roundExists && 
+            <div className="is-italic has-text-centered">
+              Round not found
+            </div>
+          }
+        </section>
       </div>
     );
   }
 }
 
-//<Route exact path={round} render={() => (
- //     <h3>Please select a round.</h3>
-//    )}/>
-export default HostRound
+const HostInfo = () => {
+  return (
+    <div>
+      Round by {this.state.host.name}
+    </div>
+  )
+}
+
+// Wrap with React context consumer to provide web3 context
+export default (props) => (
+  <Web3Context.Consumer>
+    {context => <HostRound {...props} context={context} />}
+  </Web3Context.Consumer>
+)

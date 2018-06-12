@@ -3,10 +3,6 @@ import { Web3Context } from './generic/Web3Wrapper'
 //import './BetState.scss'
 
 class BetState extends Component {
-  constructor(props) {
-    super(props)
-  }
-
   render() {
     switch(this.props.status) {
       case '':
@@ -83,7 +79,7 @@ const BetStateUnknown = () => {
 const BetStateInfo = (props) => {
   return (
     <div className="has-text-centered">
-      props.children
+      {props.children}
     </div>
   )
 }

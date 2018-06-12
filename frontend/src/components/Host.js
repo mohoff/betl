@@ -1,16 +1,15 @@
 import React, { Component } from 'react'
-import { Link } from 'react-router-dom'
 import { Web3Context } from './generic/Web3Wrapper'
 
 class Host extends Component {
 
   constructor(props) {
     super(props)
-    console.log(props)
+    let id = props.match.params.hostId
     this.state = {
       host: {
-        name: props.match.params.hostName,
-        address: '',
+        name: props.context.isAddress(id) ? '' : id,
+        address: props.context.isAddress(id) ? id : '',
         numBetsCreated: 0,
         numBetsFinished: 0,
         numBetsCancelled: 0,
@@ -23,7 +22,7 @@ class Host extends Component {
   }
 
   componentDidMount = () => {
-    // async fetch host.address... so that host.name and host.address are populated.
+    // async fetch host.address/host.name... so that host.name and host.address are populated.
   }
 
   handleRefresh = () => {

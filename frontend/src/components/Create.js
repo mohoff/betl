@@ -1,11 +1,20 @@
 import React, { Component } from 'react'
 import { Web3Context } from './generic/Web3Wrapper'
+import './Create.scss'
 
 class Create extends Component {
   constructor(props) {
     super(props)
     let numOptions = 2
     this.state = {
+      host: {
+        name: '',
+        address: props.context.account
+      },
+      registration: {
+        input: '',
+        dismissed: false,
+      },
       question: '',
       numOptions: numOptions,
       maxOptions: Number(process.env.REACT_APP_MAX_OPTIONS),
@@ -13,6 +22,14 @@ class Create extends Component {
       showAddOption: false,
       showRemoveOption: false
     }
+  }
+
+  componentDidMount = async () => {
+    let hostObj = this.state.host
+    hostObj.name = await this.props.context.getNameFromAddress(this.state.host.name)
+    this.setState({
+      host: hostObj
+    })
   }
 
   handleQuestionChange = (event) => {
@@ -32,6 +49,16 @@ class Create extends Component {
     })
   }
 
+  handleRegisterNameChange = (event) => {
+     event.persist()
+     event.preventDefault()
+     let registrationObj = this.state.registration
+     registrationObj.input = event.target.value
+     this.setState({
+        registration: registrationObj
+     })
+  }
+
   handleAddOption = (event) => {
     this.setState(prevState => {
       let opts = prevState.options.slice()
@@ -40,7 +67,7 @@ class Create extends Component {
         options: opts,
         numOptions: prevState.numOptions+1,
         showAddOption: false,
-        showRemoveOption: true,
+        showRemoveOption: true
       }
     })
   }
@@ -69,7 +96,19 @@ class Create extends Component {
     return true
   }
 
-  handleSubmit(event) {
+  handleRegister = (event) => {
+    // web3.registerName...
+  }
+
+  handleRegisterDismiss = (event) => {
+    let registrationObj = this.state.registration
+    registrationObj.dismissed = true
+    this.setState({
+      registration: registrationObj
+    })
+  }
+
+  handleSubmit = (event) => {
     console.log('submit button pressed')
     event.preventDefault()
     // this.props.web3.betl.create(...)
@@ -115,25 +154,67 @@ class Create extends Component {
 
     const getAddButton = () => {
       return (
-        <button className="button is-large" disabled={!this.state.showAddOption} onClick={this.handleAddOption} >
-          Add one
+        <button
+          className="button is-large"
+          disabled={!this.state.showAddOption}
+          onClick={this.handleAddOption} >
+            Add one
         </button>
       )
     }
 
     const getRemoveButton = () => {
       return (
-        <button className="button is-large is-expanded" disabled={!this.state.showRemoveOption} onClick={this.handleRemoveOption} >
-          Remove one
+        <button
+          className="button is-large is-expanded"
+          disabled={!this.state.showRemoveOption}
+          onClick={this.handleRemoveOption} >
+            Remove one
         </button>
       )
     }
 
+    const getRegisterName = () => {
+      if (this.state.host.name === '') {
+        return (
+          <div className={'message is-info ' + (this.state.registration.dismissed ? 'is-hidden' : '')}>
+            <div className="message-header">
+              Link your address to a username so your audience can find you easier!
+              <button
+                className="delete is-large"
+                onClick={this.handleRegisterDismiss}>
+              </button>
+            </div>
+            <div className="message-body field is-grouped is-fullwidth">  
+              <p className="control is-expanded">
+                <input
+                  className="input is-large"
+                  type="text"
+                  placeholder="Your username"
+                  value={this.state.registration.input}
+                  onChange={this.handleRegisterNameChange} />
+              </p>
+              <p className="control">
+                <button
+                  className="button is-large"
+                  disabled={!this.state.registration.input}
+                  onClick={this.handleRegister} >
+                    Link
+                </button>
+              </p>
+            </div>
+          </div>
+        )
+      } else {
+        return (
+          <div className="title">Hi {this.state.host.name}!</div>
+        )
+      }
+    }
+
     return (
       <div className="main">
-        <p className="has-text-centered">
-          Enter your bet data here
-        </p>
+        {getRegisterName()}
         <div>
           <div className="field">
             <label className="label is-large">Question</label>
@@ -141,7 +222,7 @@ class Create extends Component {
               <input
                 className="input is-large"
                 type="text"
-                placeholder="Can I has first place? PogChamp"
+                placeholder="Winning this match?"
                 value={this.state.question}
                 onChange={this.handleQuestionChange} />
             </div>

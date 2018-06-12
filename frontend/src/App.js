@@ -33,9 +33,9 @@ class App extends Component {
                   component={Create}/>
                 <Route path="/join"
                   component={Join}/>
-                <Route path="/:hostName/:roundId"
+                <Route path="/:hostId/:roundId"
                   component={HostRound}/>
-                <Route path="/:hostName"
+                <Route path="/:hostId"
                   render={Host}/>
                 <Route component={NotFound} />
               </Switch>
