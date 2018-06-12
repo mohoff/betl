@@ -56,7 +56,7 @@ contract Betl is Ownable {
   }
 
   struct Round {
-    bytes4 id;
+    uint id;
     uint status;
     RoundConfig config;
     RoundOptions options;
@@ -70,15 +70,14 @@ contract Betl is Ownable {
 
   struct HostContext {
     mapping(bytes4 => bool) roundIdLookup;
-    bytes4 lastRoundId;
-    uint numRoundsCreated;
+    uint nextRoundId; // == numRoundsCreated
     uint numRoundsSuccess;
     uint numRoundsCancelled;
     uint totalNumBets;
     uint totalPoolSize;
   }
 
-  //      host    =>        hash(id) => Round
+  //      host    =>  hash(host,id) => Round
   mapping(address => mapping(bytes8 => Round)) public rounds;
 
   //      host    => stats
@@ -88,8 +87,6 @@ contract Betl is Ownable {
   mapping(bytes32 => address) public hostAddresses;
   mapping(address => bytes32) public hostNames;
 
-  constructor () {
-  }
 
   // ADD/TODO/TOTHINK?:
   // - bool _hasMultipleWinners --> rather no. Host has no reason to cheat --> loss of reputation
@@ -97,11 +94,11 @@ contract Betl is Ownable {
   // configData[ timout, minBet, hostShare ]
   // COSTS: 296305gas -> @ 5Gwei: 1 dollar
   function createRound (
-    bytes4 _roundId,
     bytes32[] _options,
     uint[] _configData,
     uint[] _payoutTiers,
-    bool _hasFlexOptions)
+    bool _hasFlexOptions
+  )
     external
     payable
   {
@@ -111,14 +108,15 @@ contract Betl is Ownable {
     if (_hasFlexOptions == false) {
       require(_payoutTiers.length <= _options.length);
     }
-    
-    if(hostContext[msg.sender].lastRoundId != 0x00000000) {
-      uint status = rounds[msg.sender][lastRoundId].status;
+
+    uint id = hostContext[msg.sender].nextRoundId;
+    if (id > 0) {
+      uint status = rounds[msg.sender][id-1].status;
       require(status == Status.FINISHED ||
         status == Status.CANCELLED || 
         status == Status.TIMEOUT);
     }
-    require(hostContext[msg.sender].roundIdLookup[_roundId] == false);
+    //require(hostContext[msg.sender].roundIdLookup[_roundId] == false);
 
     RoundConfig memory config = RoundConfig(
       now,
@@ -154,13 +152,11 @@ contract Betl is Ownable {
       stats
     );
     
-    bytes32 idHash = keccak256(id);
+    bytes32 idHash = bytes4(keccak256(msg.sender, id));
     rounds[msg.sender][idHash] = round;
 
     // post creation
-    hostContext[msg.sender].lastRoundId = _roundId;
     hostContext[msg.sender].nextRoundId += 1;
-    hostContext[msg.sender].numRoundsCreated += 1;
     hostContext[msg.sender].totalPoolSize += msg.value;
 
     emit RoundCreated(msg.sender, idHash);
@@ -183,7 +179,7 @@ contract Betl is Ownable {
   function getRoundPickedOptionsForHost (address _host) external view returns (bool, bool, bool, bool, bool) { require(rounds[_host][getCurrentRoundIdForHost(_host)].status == STATUS_FINISHED); }
 
   function addOptionForRound (address _host, bytes4 _roundId, bytes32 _option) external {
-    require(rounds[_host][_roundId].id != 0); // not 0x0, there bust be a Round
+    require(rounds[_host][_roundId] != 0); // not 0x0, there bust be a Round
     require(rounds[_host][_roundId].options.hasFlexOptions == true);
     require(rounds[_host][_roundId].status == STATUS_OPEN);
     require(rounds[_host][_roundId].options.optionLookup[_option] == false); // option doesn't exist yet
@@ -195,13 +191,14 @@ contract Betl is Ownable {
 
   // always takes newest rounds.
   function pickWinnerAndEnd (uint[] _winners) external payable {
-    bytes4 currentId = hostContext[msg.sender].lastRoundId;
-    require(currentId != 0x00000000);
+    uint nextRoundId = hostContext[msg.sender].nextRoundId;
+    require(nextRoundId > 0);
+    uint roundId = nextRoundId-1;
 
-    uint status = rounds[msg.sender][currentId].status;
+    uint status = rounds[msg.sender][roundId].status;
     require(status == STATUS_OPEN || status == STATUS_CLOSED); // Host can either end running or closed Round
-    require(_winners.length <= rounds[msg.sender][currentId].options.numOptions);
-    require(now < rounds[msg.sender][currentId].config.timeoutAt); // --> cancelInternal when timeoutAt reached? Nahh. move to Closed?
+    require(_winners.length <= rounds[msg.sender][roundId].options.numOptions);
+    require(now < rounds[msg.sender][roundId].config.timeoutAt); // --> cancelInternal when timeoutAt reached? Nahh. move to Closed?
     
 
     // TODO: redistribute payouts
@@ -210,16 +207,15 @@ contract Betl is Ownable {
     // payouts = remaining pool
 
 
-    hostContext[_host].totalNumBets += rounds[_host][_roundId].stats.numBets;
-    hostContext[_host].totalPoolSize += (rounds[_host][_roundId].stats.poolSize + msg.value);
+    hostContext[_host].totalNumBets += rounds[_host][roundId].stats.numBets;
+    hostContext[_host].totalPoolSize += (rounds[_host][roundId].stats.poolSize + msg.value);
     hostContext[msg.sender].numRoundsSuccess += 1;
-    rounds[msg.sender][currentId].status == STATUS_FINISHED;
+    rounds[msg.sender][roundId].status == STATUS_FINISHED;
     emit RoundEnded(msg.sender, currentId);
   }
 
   function bet (address _host, bytes4 _roundId, bytes32 _optionId) external {
-    bytes4 currentId = hostContext[msg.sender].lastRoundId;
-    require(currentId == _roundId && currentId != 0x00000000);
+    require(_roundId == keccak(_host, hostContext[msg.sender].nextRoundId-1);
     require(rounds[_host][_roundId].status == STATUS_OPEN);
     require(msg.value >= rounds[_host][_roundId].config.minBet);
     require(rounds[_host][_roundId].options.optionLookup[_optionId] == true);
@@ -232,8 +228,7 @@ contract Betl is Ownable {
   }
 
   function claimPayout (address _host, bytes4 _roundId) external {
-    bytes4 currentId = hostContext[msg.sender].lastRoundId;
-    require(currentId == _roundId && currentId != 0x00000000);
+    require(_roundId == keccak(_host, hostContext[msg.sender].nextRoundId-1);
     require(rounds[_host][_roundId].status == STATUS_FINISHED);
 
     uint payout;
@@ -265,8 +260,10 @@ contract Betl is Ownable {
   }
 
   function cancelRound () external {
-    bytes4 roundId = hostContext[msg.sender].lastRoundId;
-    require(roundId != 0x00000000);
+    uint nextRoundId = hostContext[msg.sender].nextRoundId;
+    require(nextRoundId > 0);
+    uint roundId = nextRoundId -1;
+
     uint status = rounds[msg.sender][roundId].status
     require(status == STATUS_INACTIVE || status == STATUS_OPEN); // check if round is cancelable
 
@@ -276,32 +273,63 @@ contract Betl is Ownable {
   }
 
 
+  ///
+  /// Management of `Username <-> address` mappings
+  ///
 
-  function registerRecord (
-    string _name
-  )
-    external
-    //isNameFree
+  function registerRecord (string _name)
+    public
   {
-    reequire(hostNames[_name] == address(0));
-    reequire(hostAddresses[msg.sender] == bytes32(0));
-    // or if it's not free, make sure it's the same user, just wanting to replace his name
-    // check that it's not contract address (?)
-    hostAddresses[_name] = msg.sender;
-    hostNames[msg.sender] = _name;
+    require(hostAddresses[_name] == address(0));
+    require(hostNames[msg.sender] == 0x0000000000000000);
+
+    _setRecord(msg.sender, _name);
   }
 
-  function deleteRecord (
-    string _name,
-    address _address
-  )
+  function deleteRecord ()
+    public
+  {
+    string oldName = hostNames[msg.sender];
+    require(bytes(oldName).length > 0);
+
+    _removeRecord(msg.sender, oldName);
+  }
+
+  function updateRecord (string _newName)
     external
   {
-    // owner can delete any record and any user can delete his own record
-    require(msg.sender == owner || hostAddresses[_name] == msg.sender);
+    deleteRecord();
+    registerRecord(_newName);
+  }
 
-    hostAddresses[_name] = address(0);
-    hostNames[_address] = ''; // or empty bytes
+  function sudoDeleteRecord (string _name)
+    external
+    onlyOwner
+  {
+    address affectedUser = hostNames[_name];
+    require(affectedUser == address(0));
+
+    _removeRecord(msg.sender, affectedUser);
+  }
+
+  function _setRecord (
+    address _address,
+    string _name
+  )
+    private
+  {
+    hostAddresses[_name] = _address;
+    hostNames[_address] = _name;
+  }
+
+  function _removeRecord (
+    address _address,
+    string _name
+  )
+    private
+  {
+    delete hostAddresses[_name];
+    delete hostNames[_address];
   }
 
   function ()
