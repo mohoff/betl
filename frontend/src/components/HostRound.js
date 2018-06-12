@@ -1,20 +1,51 @@
 import React, { Component } from 'react'
+import BetState from './BetState'
 
 class HostRound extends Component {
 
   constructor(props) {
   	super(props)
-    this.hostId = props.match.params.hostId
-    this.roundId = props.match.params.roundId
+    this.state = {
+      host: {
+        name: props.match.params.hostName,
+        address: ''
+      },
+      roundId: props.match.params.roundId,
+      status: '',
+      question: '',
+      numOptions: 0,
+      options: [],
+      optionsBetPool: [],
+      optionsBetNum: []
+    }
+  }
+
+  componentDidMount = () => {
+    // get host.address
+    // get status, timeout
+    // get question
+    // get numOptions, options, optionsBetPool. optionsBetNum
   }
   
   render() {
-    return (
-      <div>
-        {this.hostId}<br/>
-        {this.roundId}
-      </div>
 
+    const BetState = (props) => {
+      
+    }
+
+    return (
+      <div className="main">
+       
+          <section className="section">
+            <div className="field">
+              <label className="label is-large">{this.state.host.name}:</label>
+            </div>
+
+            <BetState status={this.state.status} />
+
+          </section>
+
+      </div>
     );
   }
 }
