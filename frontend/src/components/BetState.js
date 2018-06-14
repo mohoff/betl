@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
 import { Web3Context } from './generic/Web3Wrapper'
+import BetOptions from './BetOptions'
 //import './BetState.scss'
 
 class BetState extends Component {
@@ -14,7 +15,7 @@ class BetState extends Component {
       case 'CANCELLED':
         return <BetStateCancelled />
       case 'OPEN':
-        return <BetStateOpen />
+        return <BetStateOpen {...this.props} />
       case 'CLOSED':
         return <BetStateClosed />
       case 'FINISHED':
@@ -38,10 +39,12 @@ const BetStateTimeout = () => {
 const BetStateCancelled = () => {
   return <BetStateInfo>Round is cancelled! Claim your refund now</BetStateInfo>
 }
-const BetStateOpen = () => {
+const BetStateOpen = (props) => {
+  let options = ['Yes!', 'No', 'Maybe']
   return (
     <div>
       <BetStateInfo>Round is open! Place your bets now</BetStateInfo>
+      <BetOptions options={options} />
       <div className="control has-text-centered">
         <button
           className="button is-large is-primary"

@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import { MetaMaskNotAvailable, MetaMaskWrongNetwork, MetaMaskNotLoggedIn } from './MetaMaskErrors'
 import MetaMaskLoading from './MetaMaskLoading'
 import Web3 from 'web3'
+import TruffleContract from 'truffle-contract'
 
 const POLLING_INTERVAL_MS = 500
 export const Web3Context = React.createContext();
@@ -10,7 +11,12 @@ class Web3Wrapper extends Component {
   constructor(props) {
     super(props)
     this.state = {
+      betl: {
+        address: process.env.REACT_APP_BETL_ADDRESS,
+        instance: null
+      }
       web3: null,
+      provider: null,
       currentNetwork: null,
       targetNetwork: Number(process.env.REACT_APP_TARGET_NETWORK_ID),
       account: null,
@@ -18,9 +24,26 @@ class Web3Wrapper extends Component {
     }
   }
 
-  componentWillMount = () => {
+  componentWillMount = async () => {
     this.initWeb3()
+    this.initBetl()
     this.startPollingMetaMaskStatus()
+  }
+
+  initBetl = async () => {
+    const registryArtifact = require('../../../smart-contract/build/contracts/BetRegistry.json')
+    let contract = TruffleContract(registryArtifact)
+    contract.setProvider(this.state.state.provider)
+
+    const instance = contract.at(context.state.registry.address)
+
+    this.setState(prevState => {
+      const initedBetl = prevState.betl
+      initedBetl.instance = instance
+      return {
+        betl: initedBetl
+      }
+    })
   }
 
   startPollingMetaMaskStatus = () => {
