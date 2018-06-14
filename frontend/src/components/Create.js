@@ -20,15 +20,26 @@ class Create extends Component {
       maxOptions: Number(process.env.REACT_APP_MAX_OPTIONS),
       options: new Array(numOptions).fill(''),
       showAddOption: false,
-      showRemoveOption: false
+      showRemoveOption: false,
+      isRegisterLoading: false
     }
   }
 
   componentDidMount = async () => {
-    let hostObj = this.state.host
-    hostObj.name = await this.props.context.getNameFromAddress(this.state.host.name)
-    this.setState({
-      host: hostObj
+    this.getHostName()
+  }
+
+  getHostName = async () => {
+    let hexName = await this.props.context.betl.instance.hostNames(this.props.context.account)
+    name = this.props.context.web3.utils.hexToUtf8(hexName)
+    this.setState(prevState => {
+      let hostObj = prevState.host
+      hostObj.name = name
+      console.log(hostObj)
+      return {
+        host: hostObj,
+        isRegisterLoading: false
+      }
     })
   }
 
@@ -97,7 +108,19 @@ class Create extends Component {
   }
 
   handleRegister = (event) => {
-    // web3.registerName...
+    this.setState({
+      isRegisterLoading: true
+    })
+    const options = {
+      from: this.props.context.account,
+      gas: 90000,
+      gasPrice: 10e9
+    }
+    this.props.context.betl.instance.registerRecord(this.state.registration.input, options).then(r => {
+      this.getHostName()
+    }).catch(err => {
+      this.getHostName()
+    })
   }
 
   handleRegisterDismiss = (event) => {
@@ -196,7 +219,7 @@ class Create extends Component {
               </p>
               <p className="control">
                 <button
-                  className="button is-large"
+                  className={'button is-large ' + (this.state.isRegisterLoading ? 'is-loading' : '')}
                   disabled={!this.state.registration.input}
                   onClick={this.handleRegister} >
                     Link

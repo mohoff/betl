@@ -1,6 +1,7 @@
 TODO
 ====
 
+- Make Registration box an own component
 - After 2s of showing <MetaMaskLoading/>, add text: 'Are you connected to the internet?'
 - <section>ify all components. are somehow more structure and consistent layout
 - use dot notation when referencing react components. see 'jsx in depth' doc page

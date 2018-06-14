@@ -49,7 +49,6 @@ class Web3Wrapper extends Component {
     const registryArtifact = require('./Betl.json')
     let contract = TruffleContract(registryArtifact)
     contract.setProvider(this.state.provider)
-    console.log(this.state.betl.address)
     const instance = contract.at(this.state.betl.address)
 
     this.setState(prevState => {
