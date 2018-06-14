@@ -7,8 +7,14 @@
     "test": "test"
   },
   "scripts": {
-    "start": "node scripts/test.js"
+    "start": "node scripts/test.js",
+    "deploy": "node scripts/deploy.js"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@0xproject/subproviders": "^0.10.2",
+    "@0xproject/web3-wrapper": "^0.7.0",
+    "web3": "^1.0.0-beta.34"
+  }
 }

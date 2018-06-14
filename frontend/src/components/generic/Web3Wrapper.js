@@ -12,9 +12,9 @@ class Web3Wrapper extends Component {
     super(props)
     this.state = {
       betl: {
-        address: process.env.REACT_APP_BETL_ADDRESS,
+        address: process.env.REACT_APP_BETL_ADDRESS.toLowerCase(),
         instance: null
-      }
+      },
       web3: null,
       provider: null,
       currentNetwork: null,
@@ -25,17 +25,32 @@ class Web3Wrapper extends Component {
   }
 
   componentWillMount = async () => {
-    this.initWeb3()
+    await this.initWeb3()
     this.initBetl()
     this.startPollingMetaMaskStatus()
   }
 
-  initBetl = async () => {
-    const registryArtifact = require('../../../smart-contract/build/contracts/BetRegistry.json')
-    let contract = TruffleContract(registryArtifact)
-    contract.setProvider(this.state.state.provider)
+  initWeb3 = () => {
+    return new Promise((resolve, reject) => {
+      if (typeof window.web3 !== 'undefined') {
+        this.setState({
+              provider: window.web3.currentProvider,
+              web3: new Web3(window.web3.currentProvider)
+        })
+        resolve()
+      } else {
+        console.warn('No Web3 provider detected. Is MetaMask browser installed?')
+        reject()
+      }
+    })
+  }
 
-    const instance = contract.at(context.state.registry.address)
+  initBetl = () => {
+    const registryArtifact = require('./Betl.json')
+    let contract = TruffleContract(registryArtifact)
+    contract.setProvider(this.state.provider)
+    console.log(this.state.betl.address)
+    const instance = contract.at(this.state.betl.address)
 
     this.setState(prevState => {
       const initedBetl = prevState.betl
@@ -98,17 +113,6 @@ class Web3Wrapper extends Component {
       console.warn('Failed to read current network from Metamask.')
       this.setState({ currentNetwork: '' })
     })
-  }
-
-  initWeb3 = () => {
-    if (typeof window.web3 !== 'undefined') {
-      this.setState({
-            provider: window.web3.currentProvider,
-            web3: new Web3(window.web3.currentProvider)
-      })
-    } else {
-      console.warn('No Web3 provider detected. Is MetaMask browser installed?')
-    }
   }
 
   isInitialMetaMaskCheckDone = () => {
