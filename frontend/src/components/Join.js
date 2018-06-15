@@ -1,7 +1,6 @@
 import React, { Component } from 'react'
 import { Link } from 'react-router-dom'
 import { Web3Context } from './generic/Web3Wrapper'
-import '../utils/all.js'
 import './Join.scss'
 
 class Join extends Component {

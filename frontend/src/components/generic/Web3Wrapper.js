@@ -20,7 +20,12 @@ class Web3Wrapper extends Component {
       currentNetwork: null,
       targetNetwork: Number(process.env.REACT_APP_TARGET_NETWORK_ID),
       account: null,
-      balance: null
+      balance: null,
+
+      ethPrices: {
+        USD: null,
+        EUR: null
+      }
     }
   }
 
@@ -28,6 +33,26 @@ class Web3Wrapper extends Component {
     await this.initWeb3()
     this.initBetl()
     this.startPollingMetaMaskStatus()
+  }
+
+  componentDidMount = () => {
+    this.fetchPrice('USD')
+    this.fetchPrice('EUR')
+  }
+
+  fetchPrice = (currency) => {
+    fetch(process.env.REACT_APP_ETH_PRICE_API).then(r => {
+      return r.json()
+    }).then(json => {
+      return json.data.quotes[currency]
+    }).then(fiat => {
+      this.setState(prevState => {
+        let ethPrices = prevState.ethPrices
+        ethPrices[currency] = fiat
+        console.log(ethPrices)
+        return ethPrices
+      })
+    })
   }
 
   initWeb3 = () => {
@@ -134,9 +159,12 @@ class Web3Wrapper extends Component {
       }
 
       const context = {
-        ...this.state,
-        isAddress: this.isAddress,
-        getNameFromAddress: this.getNameFromAddress
+        web3: this.state.web3,
+        betl: this.state.betl.instance,
+        account: this.state.account,
+        balance: this.state.balance,
+        ethPrices: this.state.ethPrices,
+        isAddress: this.isAddress
       }
 
       return (
@@ -153,16 +181,30 @@ class Web3Wrapper extends Component {
     return this.state.web3.utils.isAddress(str)
   }
 
-  getNameFromAddress = (address) => {
-    return new Promise((resolve, reject) => {
-      // betlInstance.names(address).then(r => {
-      //   if (r == '') {
-      //     reject()
-      //   }
-      //   resolve(r)
-      // })
-      resolve('')
-    })
+  getGas = (txName) => {
+    switch (txName) {
+      case 'deleteRecord':
+        return 90000
+      default:
+        return 100000
+    }
+  }
+
+  getGasPrice = (txName) => {
+    switch (txName) {
+      case 'bet':
+        return 20e9
+      default:
+        return 8e9
+    }
+  }
+
+  getOptions = (txName) => {
+    return {
+      from: this.account,
+      gas: this.getGas(txName),
+      gasPrice: this.getGasPrice(txName)
+    }
   }
 
 }

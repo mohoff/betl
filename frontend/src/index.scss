@@ -35,3 +35,41 @@ button {
 	max-width: 500px;
 	margin: 0 auto;
 }
+
+.field-label {
+    flex-basis: 70px;
+}
+
+span {
+    &.is-loading {
+        position: relative;
+        pointer-events: none; // == disable
+        opacity: 0.5;
+        &:after {
+            @include loader;
+            position: absolute;
+            top: calc(50% - 0.3em);
+            left: calc(50% + 0.3em);
+            width: $size-large;
+            height: $size-large;
+            border-width: 0.1em;
+        }
+    }
+}
+
+.dismiss-spinner {
+    position: relative;
+    pointer-events: none; // == disable
+    opacity: 0.5;
+    &:after {
+        @include loader;
+        position: absolute;
+        top: calc(50% - 0.55em);
+        left: calc(50% + 0em);
+        width: $size-medium;
+        height: $size-medium;
+        border-width: 0.1em;
+    }
+}
+
+
