@@ -5,7 +5,7 @@ import './Home.scss'
 class Home extends Component {
   render() {
     return (
-      <div className="has-text-centered main">
+      <div className="has-text-centered">
         <p>
           Betl let's you host and join bets<br/>
           on the Blockchain.

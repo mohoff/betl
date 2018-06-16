@@ -2,28 +2,27 @@ import React, { Component } from 'react'
 import { Web3Context } from './generic/Web3Wrapper'
 import Utils from '../utils/utils.js'
 import './Create.scss'
+import {
+  InputText,
+  InputNumber,
+  Heading,
+  Button,
+  ButtonDelete,
+  ButtonPrimary,
+  WelcomeHost
+} from './generic/Base.js'
 
 class Create extends Component {
   constructor(props) {
     super(props)
     let numOutcomes = 2
     this.state = {
-      host: {
-        name: '',
-        address: props.account
-      },
-      registration: {
-        input: '',
-        dismissed: false,
-      },
       question: '',
       numOutcomes: numOutcomes,
       maxOutcomes: Number(process.env.REACT_APP_MAX_OPTIONS),
       outcomes: new Array(numOutcomes).fill(''),
       isButtonAddOutcomeDisabled: true,
       isButtonRemoveOutcomeDisabled: true,
-      isRegisterLoading: false,
-      isLoadingDeleteInline: false,
 
       timeoutMin: Number(process.env.REACT_APP_DEFAULT_TIMEOUT_MIN),
       timeoutSec: Number(process.env.REACT_APP_DEFAULT_TIMEOUT_SEC),
@@ -33,20 +32,7 @@ class Create extends Component {
   }
 
   componentDidMount = async () => {
-    this.getHostName()
-  }
-
-  getHostName = async () => {
-    let hexName = await this.props.betl.hostNames(this.props.account)
-    let name = this.props.web3.utils.hexToUtf8(hexName)
-    this.setState(prevState => {
-      let hostObj = prevState.host
-      hostObj.name = name
-      return {
-        host: hostObj,
-        isRegisterLoading: false
-      }
-    })
+    //this.getHostName()
   }
 
   handleQuestionChange = (event) => {
@@ -64,16 +50,6 @@ class Create extends Component {
         isButtonAddOutcomeDisabled: this.shouldDisableAddOutcome(opts)
       }
     })
-  }
-
-  handleRegisterNameChange = (event) => {
-     event.persist()
-     event.preventDefault()
-     let registrationObj = this.state.registration
-     registrationObj.input = event.target.value
-     this.setState({
-        registration: registrationObj
-     })
   }
 
   handleOutcomeAdd = (event) => {
@@ -122,59 +98,6 @@ class Create extends Component {
     return false
   }
 
-  handleRegisterName = () => {
-    this.setState({
-      isRegisterLoading: true
-    })
-    const outcomes = {
-      from: this.props.account,
-      gas: 90000,
-      gasPrice: 10e9
-    }
-    this.props.betl.registerRecord(this.state.registration.input, outcomes).then(r => {
-      this.getHostName()
-    }).catch(err => {
-      this.getHostName()
-    })
-  }
-
-  handleRegisterNameDismiss = () => {
-    let registrationObj = this.state.registration
-    registrationObj.dismissed = true
-    this.setState({
-      registration: registrationObj
-    })
-  }
-
-  handleDeleteInline = () => {
-    this.setState({ isLoadingDeleteInline: true })
-
-    const outcomes = {
-      from: this.props.account,
-      gas: 90000,
-      gasPrice: 10e9
-    }
-
-    this.props.betl.deleteRecord(outcomes).then(r => {
-      this.setState(prevState => {
-        let hostObj = prevState.host
-        hostObj.name = ''
-        let registrationObj = prevState.registration
-        registrationObj.input = ''
-        return {
-          host: hostObj,
-          registration: registrationObj
-        }
-      }, () => {
-        console.log('Success: Name deleted')
-      })
-    }).catch(err => {
-      console.error('Error: Couldn\'t delete name')
-    }).finally(() => {
-      this.setState({ isLoadingDeleteInline: false })
-    })
-  }
-
   handleCreate = (event) => {
     console.log('Create button pressed')
     event.preventDefault()
@@ -183,26 +106,16 @@ class Create extends Component {
 
   render() {
     return (
-      <div className="main">
-        {this.state.host.name === ''
-          ? <RegisterName
-              isDismissed={this.state.registration.dismissed}
-              isLoading={this.state.isRegisterLoading}
-              inputValue={this.state.registration.input}
-              handleDismiss={this.handleRegisterNameDismiss}
-              handleChange={this.handleRegisterNameChange}
-              handleLink={this.handleRegisterName} />
-          : <WelcomeName
-              isLoading={this.state.isLoadingDeleteInline}
-              handleDelete={this.handleDeleteInline}>
-              {this.state.host.name}
-            </WelcomeName>
-        }
-      
+      <div>
+        
+        <WelcomeHost>
+          {this.props.userName}
+        </WelcomeHost>
+        
         <div className="field">
-          <label className="label is-large">Question</label>
+          <Heading>Question</Heading>
           <div className="control">
-            <Input
+            <InputText
               placeholder="Winning this match?"
               value={this.state.question}
               onChange={this.handleQuestionChange}
@@ -211,7 +124,7 @@ class Create extends Component {
         </div>
 
         <div className="field">
-          <label className="label is-large">Outcomes</label>
+          <Heading>Outcomes</Heading>
           <OutcomesCreate 
             numOutcomes={this.state.numOutcomes}
             maxOutcomes={this.state.maxOutcomes}
@@ -240,7 +153,7 @@ class Create extends Component {
         </div>
 
         <div className="field">
-          <label className="label is-large">Options</label>
+          <Heading>Options</Heading>
           <Options
             handleMinChange={this.handleMinChange}
             handleSecChange={this.handleSecChange}
@@ -255,110 +168,15 @@ class Create extends Component {
         <br />
         <br />
 
-        <div className="control has-text-centered">
-          <ButtonPrimary
-            isLoading={this.state.isCreateLoading}
-            isDisabled={this.state.isCreateLoading} // TODO: && if outcomes pass sanity check
-            onClick={this.handleCreate}>
-            Create
-          </ButtonPrimary>
-        </div>
+        <ButtonPrimary
+          isLoading={this.state.isCreateLoading}
+          isDisabled={this.state.isCreateLoading} // TODO: && if outcomes pass sanity check
+          onClick={this.handleCreate}>
+          Create
+        </ButtonPrimary>
       </div>
     )
   }
-}
-
-const RegisterName = (props) => {
-  if (props.isDismissed) {
-    return null
-  }
-
-  return (
-    <div className="message is-info">
-      <div className="message-header">
-        Link your address to a username so your audience can find you easier!
-        <ButtonDelete
-          onClick={props.handleDismiss}>
-        </ButtonDelete>
-      </div>
-      <div className="message-body field is-grouped is-fullwidth">  
-        <p className="control is-expanded">
-          <Input
-            placeholder="Your username"
-            value={props.inputValue}
-            onChange={props.handleChange} />
-        </p>
-        <p className="control">
-          <Button
-            isLoading={props.isLoading}
-            isDisabled={props.isLoading || !props.inputValue}
-            onClick={props.handleLink}>
-            Link
-          </Button>
-        </p>
-      </div>
-    </div>
-  )
-}
-
-const WelcomeName = (props) => {
-  return (
-    <div className="title">
-      Hi {props.children}
-      <DeleteInline {...props} />
-    </div>
-  )
-}
-
-const DeleteInline = ({ isLoading, handleDelete }) => {
-  return (
-    <a
-      className={(isLoading ? 'dismiss-spinner' : 'delete')}
-      onClick={handleDelete}
-    ></a>
-  )
-}
-
-const Input = ({ value, placeholder, onChange, ...other }) => {
-  return (
-    <input
-      className="input is-large"
-      type="text"
-      placeholder={placeholder}
-      value={value}
-      onChange={onChange}
-      {...other}
-    />
-  )
-}
-
-const ButtonPrimary = (props) => {
-  return <Button {...props} className="is-primary" />
-}
-
-const ButtonDismiss = (props) => {
-  return <Button {...props} className="delete" />
-}
-
-const ButtonDelete = ({ onClick, ...other }) => {
-  return (
-    <button
-      className="delete is-large"
-      onClick={onClick} >
-        {other.children}
-    </button>
-  )
-}
-
-const Button = ({ isLoading, isDisabled, onClick, className, ...other }) => {
-  return (
-    <button
-      className={['button is-large', className].join(' ') + (isLoading ? ' is-loading' : '')}
-      disabled={isDisabled}
-      onClick={onClick} >
-        {other.children}
-    </button>
-  )
 }
 
 const ButtonAddOutcome = (props) => {
@@ -400,7 +218,7 @@ const OutcomesCreate = ({ numOutcomes, maxOutcomes, outcomes, shouldHaveFocus, h
             </a>
           </p>
           <p className="control is-expanded">
-            <Input
+            <InputText
               placeholder={isFirstElement ? 'Yes! Kappa' : isSecondElement ? 'No.. FailFish' : ''}
               value={outcomes[i]}
               autoFocus={hasFocus}
@@ -525,15 +343,14 @@ const OptionNumberInput = ({ min, max, step, placeholder, unit, onChange, value 
   return (
     <div className="field has-addons">
       <p className="control is-expanded">
-        <input
-          className="input is-large"
-          type="number"
+        <InputNumber
+          value={value}
+          placeholder={placeholder}
+          onChange={onChange}
           min={min}
           max={max}
           step={step}
-          value={value}
-          placeholder={placeholder}
-          onChange={onChange} />
+        />
       </p>
       <p className="control">
         <a className="button is-large is-static">

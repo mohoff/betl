@@ -33,7 +33,7 @@ class HostRound extends Component {
   
   render() {
     return (
-      <div className="main">       
+      <div>       
         <section className="section">
           {this.state.host.exists && this.state.host.name !== '' &&
             <HostInfo name={this.state.host.name}/>

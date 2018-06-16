@@ -19,8 +19,10 @@ class Web3Wrapper extends Component {
       provider: null,
       currentNetwork: null,
       targetNetwork: Number(process.env.REACT_APP_TARGET_NETWORK_ID),
-      account: null,
-      balance: null,
+
+      userAddress: null,
+      userBalance: null,
+      userName: null,
 
       ethPrices: {
         USD: null,
@@ -49,7 +51,6 @@ class Web3Wrapper extends Component {
       this.setState(prevState => {
         let ethPrices = prevState.ethPrices
         ethPrices[currency] = fiat
-        console.log(ethPrices)
         return ethPrices
       })
     })
@@ -92,50 +93,87 @@ class Web3Wrapper extends Component {
   }
 
   updateMetaMaskStatus = () => {
-    this.updateAccounts()
-     this.updateCurrentNetwork()
+    this.updateUserAddress()
+    this.updateCurrentNetwork()
   }
 
-  updateAccounts = () => {
+  updateUserAddress = () => {
     this.state.web3 && this.state.web3.eth && this.state.web3.eth.getAccounts().then((accounts) => {
       if (Array.isArray(accounts) && accounts.length > 0) {
-        const acc = accounts[0].toLowerCase()
-        if (this.state.account !== acc) {
-          this.setState({ account: acc })
-          this.updateBalance()
+        const address = accounts[0].toLowerCase()
+        if (this.state.userAddress !== address) {
+          this.setState({ userAddress: address })
+          this.updateUserBalance(address)
+          this.updateUserName(address)
         }
       } else {
-        this.setState({ account: '' })
+        this.setState({ userAddress: '' })
       }
     }).catch(err => {
-      this.setState({ account: '' })
+      this.setState({ userAddress: '' })
     })
   }
 
-  updateBalance = () => {
-    if(this.state.account !== '') {
-      this.state.web3 && this.state.web3.eth && this.state.web3.eth.getBalance(this.state.account).then(balance => {
+  updateUserBalance = (address) => {
+    if (address !== '') {
+      this.state.web3 && this.state.web3.eth && this.state.web3.eth.getBalance(address).then(balance => {
         this.setState({
-          balance: Number(this.state.web3.utils.fromWei(balance)).toFixed(3)
+          userBalance: Number(this.state.web3.utils.fromWei(balance)).toFixed(3)
         })
       }).catch(err => {
-        console.warn("Failed to read account balance.")
-        this.setState({ balance: '' })
+        console.warn("Failed to read user balance.")
+        this.setState({ userBalance: '' })
       })
     } else {
-      this.setState({ balance: '' })
+      this.setState({ userBalance: '' })
     }
   }
 
   updateCurrentNetwork = () => {
-    this.state.web3 && this.state.web3.eth && this.state.web3.eth.net.getId().then((network) => {
+    this.state.web3 && this.state.web3.eth && this.state.web3.eth.net && 
+        this.state.web3.eth.net.getId().then((network) => {
       if (this.state.currentNetwork !== network) {
         this.setState({ currentNetwork: network })
-        this.updateBalance()  
+        this.updateUserBalance(this.state.userAddress)
+        this.updateUserName(this.state.userAddress)  
       }
     }).catch(err => {
       console.warn('Failed to read current network from Metamask.')
       this.setState({ currentNetwork: '' })
+    })
+  }
+
+  updateUserName = async (address) => {
+    if (address !== '') {
+      const userName = await this.getUserName(address)
+      this.setState({ userName: userName })
+    } else {
+      this.setState({ userName: '' })
+    }
+  }
+
+  getUserName = (address) => {
+    return new Promise((resolve, reject) => {
+      this.state.betl.instance.hostNames(address).then(hexName => {
+        let name = this.state.web3.utils.hexToUtf8(hexName)
+        this.setState({ userName: name })
+        resolve(name)
+      }).catch(err => {
+        console.warn("Failed to read user name.")
+        this.setState({ userName: '' })
+        resolve('')
+      })
+    })
+  }
+
+  getUserAddress = (name) => {
+    return new Promise((resolve, reject) => {
+      this.state.betl.instance.hostAddresses(name).then(address => {
+        resolve(address)
+      }).catch(err => {
+        console.warn("Failed to read user address.")
+        resolve('')
+      })
     })
   }
 
@@ -161,10 +199,14 @@ class Web3Wrapper extends Component {
       const context = {
         web3: this.state.web3,
         betl: this.state.betl.instance,
-        account: this.state.account,
-        balance: this.state.balance,
+        userAddress: this.state.userAddress,
+        userBalance: this.state.userBalance,
+        userName: this.state.userName,
         ethPrices: this.state.ethPrices,
-        isAddress: this.isAddress
+        isAddress: this.isAddress,
+        updateUserName: this.updateUserName,
+        getUserName: this.getUserName,
+        getUserAddress: this.getUserAddress,
       }
 
       return (

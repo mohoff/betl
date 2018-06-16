@@ -38,7 +38,7 @@ class Join extends Component {
 
   render = () => {
     return (
-      <div className="main">
+      <div>
         <div>
           <div className="field">
             <label className="label is-large">Search for a host</label>

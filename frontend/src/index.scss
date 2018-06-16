@@ -11,16 +11,24 @@
 
 
 
-$primary: rgb(114, 163, 255);
+$primary: rgb(175, 49, 95);
 $grey-lighter: #444;
 
+$gap: 16px;
+$tablet: 500px;
+$desktop: 500px;
+$widescreen-enabled: false;
+$fullhd-enabled: false;
+$widescreen: 500px;
+$fullhd: 500px;
+
+$link: rgb(175, 49, 95);
+$link-hover: rgb(196, 56, 107);
 
 @import 'bulma/bulma.sass';
 
-$link: #000;
-
 body {
-	max-width: 960px;
+	max-width: 500px;
 	margin: 0px auto;
 	font-family: Verdana, sans-serif;
 }
@@ -31,13 +39,16 @@ button {
 	letter-spacing: 5px;
 }
 
-.main {
-	max-width: 500px;
-	margin: 0 auto;
-}
-
 .field-label {
     flex-basis: 70px;
+}
+
+.no-entries {
+    margin: 50px 0px;
+}
+
+.headline {
+    margin-top: 50px;
 }
 
 span {
