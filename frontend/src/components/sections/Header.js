@@ -10,7 +10,7 @@ class Header extends Component {
           <h1>betl</h1>
         </Link>
         <div className="content has-text-centered">
-          <p className="subheader">
+          <p className="subheader has-text-primary">
             Play and bet in your online community
           </p>
         </div>

@@ -204,6 +204,7 @@ class Web3Wrapper extends Component {
         userName: this.state.userName,
         ethPrices: this.state.ethPrices,
         isAddress: this.isAddress,
+        getOptions: this.getOptions,
         updateUserName: this.updateUserName,
         getUserName: this.getUserName,
         getUserAddress: this.getUserAddress,
@@ -243,7 +244,7 @@ class Web3Wrapper extends Component {
 
   getOptions = (txName) => {
     return {
-      from: this.account,
+      from: this.state.userAddress,
       gas: this.getGas(txName),
       gasPrice: this.getGasPrice(txName)
     }

@@ -7,7 +7,6 @@ import {
   InputNumber,
   Heading,
   Button,
-  ButtonDelete,
   ButtonPrimary,
   WelcomeHost
 } from './generic/Base.js'
@@ -71,7 +70,7 @@ class Create extends Component {
       return {
         outcomes: opts,
         numOutcomes: prevState.numOutcomes-1,
-        isButtonAddOutcomeDisabled: opts.length == this.state.maxOutcomes,
+        isButtonAddOutcomeDisabled: opts.length === this.state.maxOutcomes,
         isButtonRemoveOutcomeDisabled: opts.length <= 2
       }
     })

@@ -8,11 +8,10 @@ class HostRound extends Component {
   	super(props)
     let id = props.match.params.hostId
     this.state = {
-      host: {
-        exists: true,
-        name: 'le me',//props.context.isAddress(id) ? '' : id,
-        address: '0x123412341234124123412341234124124' //props.context.isAddress(id) ? id : '',
-      },
+      hostId: props.match.params.hostId,
+      hostAddress: '0x123412341234124123412341234124124',
+      hostName: 'le me',
+
       roundExists: true,
       roundId: props.match.params.roundId,
       status: 'OPEN',
@@ -34,7 +33,7 @@ class HostRound extends Component {
   render() {
     return (
       <div>       
-        <section className="section">
+        
           {this.state.host.exists && this.state.host.name !== '' &&
             <HostInfo name={this.state.host.name}/>
           }
@@ -59,7 +58,7 @@ class HostRound extends Component {
               Round not found
             </div>
           }
-        </section>
+  
       </div>
     );
   }
@@ -72,6 +71,6 @@ const HostInfo = ({name}) => {
 // Wrap with React context consumer to provide web3 context
 export default (props) => (
   <Web3Context.Consumer>
-    {context => <HostRound {...props} context={context} />}
+    {context => <HostRound {...props} {...context} />}
   </Web3Context.Consumer>
 )

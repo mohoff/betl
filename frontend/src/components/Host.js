@@ -45,7 +45,7 @@ class Host extends Component {
       hostAddress = await this.props.getUserAddress(hostName)
     }
     this.setState({
-      hostAddress: hostAddress,
+      hostAddress: hostAddress.toLowerCase(),
       hostName: hostName
     })
   }
@@ -55,38 +55,25 @@ class Host extends Component {
   }
 
   handleLinkNameChange = (event) => {
-     event.persist()
-     event.preventDefault()
-     let registrationObj = this.state.registration
-     registrationObj.input = event.target.value
-     this.setState({
-        registration: registrationObj
-     })
+     this.setState({ linkInput: event.target.value })
   }
 
-  handleLinkName = () => {
+  handleLink = () => {
     this.setState({ isLoadingLink: true })
 
-    const options = {
-      from: this.props.userAddress,
-      gas: 90000,
-      gasPrice: 10e9
-    }
-    const newName = this.state.registration.input
-    this.props.betl.registerRecord(newName, options).then(r => {
+    const newName = this.state.linkInput
+    this.props.betl.registerRecord(newName, this.props.getOptions()).then(r => {
       this.props.updateUserName()
-      this.setState(prevState => {
-        let registrationObj = prevState.registration
-        registrationObj.input = ''
-        return {
+      this.setState({
           hostName: newName,
-          registration: registrationObj
-        }
+          linkInput: ''
       }, () => {
         console.log('Success: Name linked')
+        this.forceUpdate() // TODO: check if needed, if it changes anything at all
       })
     }).catch(err => {
       console.warn('Could\'nt link name')
+      console.log(err)
     }).finally(() => {
       this.setState({ isLoadingLink: false })
     })
@@ -95,21 +82,11 @@ class Host extends Component {
   handleDeleteName = () => {
     this.setState({ isLoadingDeleteLink: true })
 
-    const options = {
-      from: this.props.userAddress,
-      gas: 90000,
-      gasPrice: 10e9
-    }
-
-    this.props.betl.deleteRecord(options).then(r => {
+    this.props.betl.deleteRecord(this.props.getOptions()).then(r => {
       this.props.updateUserName()
-      this.setState(prevState => {
-        let registrationObj = prevState.registration
-        registrationObj.input = ''
-        return {
+      this.setState({
           hostName: '',
-          registration: registrationObj
-        }
+          linkInput: ''
       }, () => {
         console.log('Success: Name deleted')
       })
@@ -121,11 +98,7 @@ class Host extends Component {
   }
 
   handleLinkDismiss = () => {
-    let registrationObj = this.state.registration
-    registrationObj.dismissed = true
-    this.setState({
-      registration: registrationObj
-    })
+    this.setState({ linkDismissed: true })
   }
   
   render() {
@@ -144,7 +117,7 @@ class Host extends Component {
             inputValue={this.state.linkInput}
             handleDismiss={this.handleLinkDismiss}
             handleChange={this.handleLinkNameChange}
-            handleLink={this.handleLinkName} />
+            handleLink={this.handleLink} />
         )
       } else {
         return (
@@ -246,7 +219,7 @@ const LinkName = (props) => {
   }
 
   return (
-    <div className="message is-info">
+    <div className="message is-warning">
       <div className="message-header">
         Link your address to a username so your audience can find you easier!
         <ButtonDelete

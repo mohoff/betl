@@ -67,7 +67,7 @@ export const WelcomeHost = ({ children, isDeletable, ...other }) => {
   return (
     <div>
       <div className="title">
-        Welcome back <span className="has-text-grey-light">{children}</span>
+        Welcome back <span className="has-text-primary">{children}</span>
         {isDeletable && <DeleteInline {...other} />}
       </div>
       <hr />
