@@ -58,8 +58,7 @@ main = async () => {
         .withGas(4000000)
         .withGasPrice(10e9)
         .awaitInstance(web3, web3Wrapper)
-    console.log('Contract deployed!' + instance.address)
-    console.log(instance)
+    console.log('Contract deployed at: ' + instance._address)
     process.exit()
 }
 main().catch(console.error)

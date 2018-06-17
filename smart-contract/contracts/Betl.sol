@@ -88,7 +88,7 @@ contract Betl is Ownable {
   mapping(address => bytes32) public hostNames;
 
   function getRoundId(address _host)
-    private
+    public
     view
     returns (bytes4)
   {
@@ -172,7 +172,7 @@ contract Betl is Ownable {
   function getRound (address _hostAddress, bytes4 _roundId)
     public
     view // status, createdAt, timeoutAt, question, numOptions, numBets, poolSize
-    returns (uint, uint, uint, bytes32, uint, uint, uint)
+    returns (uint, uint, uint, uint, bytes32, uint, uint, uint)
   {
     uint nextRoundId = hostContext[_hostAddress].nextRoundId;
     require(nextRoundId > 0, 'Host has not created any round yet');
@@ -180,6 +180,7 @@ contract Betl is Ownable {
     require(round.status != Status.UNDEFINED, 'Round does not exist');
 
     return (
+      nextRoundId-1,
       uint8(round.status),
       round.config.createdAt,
       round.config.timeoutAt,
@@ -193,7 +194,7 @@ contract Betl is Ownable {
   function getRound (bytes32 _hostName, bytes4 _roundId) 
     external
     view // status, createdAt, timeoutAt, question, numOptions, numBets, poolSize
-    returns (uint, uint, uint, bytes32, uint, uint, uint)
+    returns (uint, uint, uint, uint, bytes32, uint, uint, uint)
   {
     require(hostAddresses[_hostName] != address(0), 'Host does not exist');
     return getRound(hostAddresses[_hostName], _roundId);

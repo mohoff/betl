@@ -8,13 +8,9 @@ class HostRound extends Component {
 
   constructor(props) {
   	super(props)
-    let id = props.match.params.hostId
     this.state = {
-      hostId: props.match.params.hostId,
-      roundId: props.match.params.roundId,
-
-      hostAddress: '0x13412341234124123412341234124124',
-      hostName: 'le me',
+      hostId: props.match.params.hostId.toLowerCase(),
+      roundId: props.match.params.roundId.toLowerCase(),
 
       roundExists: true,
       status: 'OPEN',
@@ -34,8 +30,11 @@ class HostRound extends Component {
     this.props.betl.getRound(this.state.hostId, this.state.roundId).then(r => {
       console.log('Success: getRound')
       console.log(r)
-      let [status, createdAt, timeoutAt, question, numOptions, numBets, poolSize] = r
-      console.log(createdAt)
+      let [id, status, createdAt, timeoutAt, question, numOptions, numBets, poolSize] = r
+      console.log(Number(id) + ', ' + String(id))
+      console.log(Number(status))
+      console.log(Number(createdAt))
+      console.log(Number(timeoutAt))
     }).catch(err => {
       console.log('Error: getRound')
       console.log(err)
@@ -66,30 +65,7 @@ class HostRound extends Component {
     return (
       <div>       
         
-          {this.state.host.exists && this.state.host.name !== '' &&
-            <HostInfo name={this.state.host.name}/>
-          }
-
-          {this.state.host.exists && this.state.roundExists &&
-            <div>
-              <p className="label is-large">
-                "{this.state.question}"
-              </p>
-              <BetState {...this.state} />
-            </div>
-          }
-
-          {!this.state.host.exists && 
-            <div className="is-italic has-text-centered">
-              Host not found
-            </div>
-          }
-          
-          {this.state.host.exists && !this.state.roundExists && 
-            <div className="is-italic has-text-centered">
-              Round not found
-            </div>
-          }
+         
   
       </div>
     );
@@ -106,3 +82,28 @@ export default (props) => (
     {context => <HostRound {...props} {...context} />}
   </Web3Context.Consumer>
 )
+
+ // {this.state.host.exists && this.state.host.name !== '' &&
+ //            <HostInfo name={this.state.host.name}/>
+ //          }
+
+ //          {this.state.host.exists && this.state.roundExists &&
+ //            <div>
+ //              <p className="label is-large">
+ //                "{this.state.question}"
+ //              </p>
+ //              <BetState {...this.state} />
+ //            </div>
+ //          }
+
+ //          {!this.state.host.exists && 
+ //            <div className="is-italic has-text-centered">
+ //              Host not found
+ //            </div>
+ //          }
+          
+ //          {this.state.host.exists && !this.state.roundExists && 
+ //            <div className="is-italic has-text-centered">
+ //              Round not found
+ //            </div>
+ //          }

@@ -24,6 +24,7 @@ class Create extends Component {
       isButtonRemoveOutcomeDisabled: true,
 
       isCreateLoading: false,
+      createdRound: '',
 
       timeoutMin: Number(process.env.REACT_APP_DEFAULT_TIMEOUT_MIN),
       timeoutSec: Number(process.env.REACT_APP_DEFAULT_TIMEOUT_SEC),
@@ -99,27 +100,29 @@ class Create extends Component {
     return false
   }
 
-  handleCreate = (event) => {
+  handleCreate = async (event) => {
     console.log('Create button pressed')
     this.setState({ isCreateLoading: true })
     // TODO: input validation, make sure we have seconds below
-    const timeoutAt = Math.floor(Date.now()/1000) + this.state.timeoutMin*60 + this.state.timeoutSec
+    const timeoutAt = (new Date() / 1000 | 0) + this.state.timeoutMin*60 + this.state.timeoutSec
+    console.log('timeoutAt: ' + timeoutAt)
     this.props.betl.createRound(
-      this.state.question,                                // question
-      this.state.outcomes,                                // outcomes
-      [timeoutAt, this.state.minBet, this.state.hostFee],  // configData
+      this.state.question,   // TODO: toHex               // question
+      this.state.outcomes,   // TODO: toHEx               // outcomes
+      [timeoutAt, this.state.minBet, this.state.hostFee], // configData
       [100],                                              // payout tiers
       this.props.getOptions()
-    ).then(r => {
+    ).then(async (r) => {
       console.log('Success!')
       console.log(r)
+      const roundId = await this.props.betl.getRoundId(this.props.userAddress)
+      console.log('roundid: ' + roundId)
     }).catch(err => {
       console.log('Error')
       console.log(err)
     }).finally(() => {
       this.setState({ isCreateLoading: false })
     })
-    //bytes32 _question, bytes32[] _options, uint[] _configData,
   }
 
   render() {
