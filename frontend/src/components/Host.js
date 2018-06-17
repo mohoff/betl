@@ -48,6 +48,8 @@ class Host extends Component {
       hostAddress: hostAddress.toLowerCase(),
       hostName: hostName
     })
+
+    // TODO: if (hostAddress !== '') { try fetch round(s) for this host }
   }
 
   handleRefresh = () => {

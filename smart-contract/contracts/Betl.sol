@@ -100,7 +100,7 @@ contract Betl is Ownable {
   // - bool _hasMultipleWinners --> rather no. Host has no reason to cheat --> loss of reputation
   // - modeCode usefulness?
   // configData[ timout, minBet, hostShare ]
-  // COSTS: 296305gas -> @ 5Gwei: 1 dollar
+  // COSTS: 294518 gas -> @ 5Gwei: 1 dollar
   function createRound (
     bytes32 _question,
     bytes32[] _options,

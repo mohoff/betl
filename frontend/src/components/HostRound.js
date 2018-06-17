@@ -46,7 +46,7 @@ class HostRound extends Component {
     // get numOptions, options, optionsBetPool. optionsBetNum
   }
 
-  getHostInfo = (hostId) => {
+  getHostInfo = async (hostId) => {
     let hostAddress, hostName
     if (this.props.isAddress(hostId)) {
       hostAddress = hostId
@@ -55,6 +55,7 @@ class HostRound extends Component {
       hostName = hostId
       hostAddress = await this.props.getUserAddress(hostName)
     }
+
     this.setState({
       hostAddress: hostAddress.toLowerCase(),
       hostName: hostName

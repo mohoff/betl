@@ -20,7 +20,7 @@ class Contract {
         this.bytecode = Contract.link(this.bytecode, this.libraries)
         this.wrapper = new web3.eth.Contract(this.abi)
 
-        console.log('...deploying with options: \n' + this.options)
+        console.log('...deploying with options: \n' + JSON.stringify(this.options))
 
         return new Promise((resolve, reject) => {
             this.wrapper.deploy({

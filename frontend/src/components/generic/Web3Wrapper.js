@@ -229,7 +229,7 @@ class Web3Wrapper extends Component {
       case 'deleteRecord':
         return 90000
       default:
-        return 100000
+        return 500000
     }
   }
 
@@ -243,6 +243,7 @@ class Web3Wrapper extends Component {
   }
 
   getOptions = (txName) => {
+    console.log(this.state.userAddress)
     return {
       from: this.state.userAddress,
       gas: this.getGas(txName),
