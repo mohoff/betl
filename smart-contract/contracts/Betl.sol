@@ -11,7 +11,7 @@ contract Betl is Ownable {
   uint private constant MODE_WHATEVER = 0;       // usecase for modes?
 
   enum Status {
-    INACTIVE,
+    UNDEFINED,
     OPEN,
     CLOSED,
     FINISHED,
@@ -58,6 +58,7 @@ contract Betl is Ownable {
   struct Round {
     uint id;
     Status status;
+    bytes32 question;
     RoundConfig config;
     RoundOptions options;
     RoundResults results;
@@ -69,7 +70,6 @@ contract Betl is Ownable {
   }
 
   struct HostContext {
-    mapping(bytes4 => bool) roundIdLookup;
     uint nextRoundId; // == numRoundsCreated
     uint numRoundsSuccess;
     uint numRoundsCancelled;
@@ -102,6 +102,7 @@ contract Betl is Ownable {
   // configData[ timout, minBet, hostShare ]
   // COSTS: 296305gas -> @ 5Gwei: 1 dollar
   function createRound (
+    bytes32 _question,
     bytes32[] _options,
     uint[] _configData,
     uint[] _payoutTiers
@@ -116,12 +117,13 @@ contract Betl is Ownable {
     require(_payoutTiers.length <= _options.length);
 
     uint id = hostContext[msg.sender].nextRoundId;
-    if (id > 0) {
-      Status status = rounds[msg.sender][getRoundId(msg.sender)].status;
-      require(status == Status.FINISHED ||
-        status == Status.CANCELLED || 
-        status == Status.TIMEOUT);
-    }
+    // TODO: check if we really need this check
+    // if (id > 0) {
+    //   Status status = rounds[msg.sender][getRoundId(msg.sender)].status;
+    //   require(status == Status.FINISHED ||
+    //     status == Status.CANCELLED || 
+    //     status == Status.TIMEOUT);
+    // }
     //require(hostContext[msg.sender].roundIdLookup[_roundId] == false);
 
     RoundConfig memory config = RoundConfig(
@@ -150,6 +152,7 @@ contract Betl is Ownable {
     Round memory round = Round(
       id,
       Status.OPEN,
+      _question,
       config,
       options,
       results,
@@ -164,6 +167,36 @@ contract Betl is Ownable {
     hostContext[msg.sender].totalPoolSize += msg.value;
 
     emit RoundCreated(msg.sender, roundId);
+  }
+
+  function getRound (address _hostAddress, bytes4 _roundId)
+    public
+    view // status, createdAt, timeoutAt, question, numOptions, numBets, poolSize
+    returns (uint, uint, uint, bytes32, uint, uint, uint)
+  {
+    uint nextRoundId = hostContext[_hostAddress].nextRoundId;
+    require(nextRoundId > 0, 'Host has not created any round yet');
+    Round storage round = rounds[_hostAddress][_roundId];
+    require(round.status != Status.UNDEFINED, 'Round does not exist');
+
+    return (
+      uint8(round.status),
+      round.config.createdAt,
+      round.config.timeoutAt,
+      round.question,
+      round.options.numOptions,
+      round.stats.numBets,
+      round.stats.poolSize
+    );
+  }
+
+  function getRound (bytes32 _hostName, bytes4 _roundId) 
+    external
+    view // status, createdAt, timeoutAt, question, numOptions, numBets, poolSize
+    returns (uint, uint, uint, bytes32, uint, uint, uint)
+  {
+    require(hostAddresses[_hostName] != address(0), 'Host does not exist');
+    return getRound(hostAddresses[_hostName], _roundId);
   }
 
   //                                                           status, createdAt, timeout, minBet, hostBonus, hasFlexOption
@@ -266,7 +299,7 @@ contract Betl is Ownable {
     bytes4 roundId = getRoundId(msg.sender);
 
     Status status = rounds[msg.sender][roundId].status;
-    require(status == Status.INACTIVE || status == Status.OPEN); // check if round is cancelable
+    require(status == Status.UNDEFINED || status == Status.OPEN); // check if round is cancelable
 
     rounds[msg.sender][roundId].status = Status.CANCELLED;
     hostContext[msg.sender].numRoundsCancelled += 1;

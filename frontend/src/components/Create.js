@@ -99,8 +99,15 @@ class Create extends Component {
 
   handleCreate = (event) => {
     console.log('Create button pressed')
-    event.preventDefault()
-    // this.props.web3.betl.create(...)
+    // TODO: input validation, make sure we have seconds below
+    const timeoutAt = Math.floor(Date.now()/1000) + this.state.timeoutMin*60 + this.state.timeoutSec
+    this.props.betl.create(
+      this.state.question,                                // question
+      this.state.outcomes,                                // outcomes
+      [timoutAt, this.state.minBet, this.state.hostFee],  // configData
+      [100]                                               // payout tiers
+    )
+    //bytes32 _question, bytes32[] _options, uint[] _configData,
   }
 
   render() {
