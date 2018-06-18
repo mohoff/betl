@@ -96,7 +96,7 @@ const DeleteInline = ({ isLoading, handleDelete }) => {
     <a
       className={(isLoading ? 'dismiss-spinner' : 'delete')}
       onClick={handleDelete}
-    ></a>
+    >&nbsp;</a>
   )
 }
 

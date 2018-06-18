@@ -25,6 +25,7 @@ $fullhd: 500px;
 $link: rgb(175, 49, 95);
 $link-hover: rgb(196, 56, 107);
 
+
 @import 'bulma/bulma.sass';
 
 body {
@@ -49,6 +50,10 @@ button {
 
 .headline {
     margin-top: 50px;
+}
+
+.monotype {
+    font-family: $family-monospace;
 }
 
 span {

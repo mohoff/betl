@@ -70,7 +70,7 @@ contract Betl is Ownable {
   }
 
   struct HostContext {
-    uint nextRoundId; // == numRoundsCreated
+    uint nextRoundNumber; // == numRoundsCreated
     uint numRoundsSuccess;
     uint numRoundsCancelled;
     uint totalNumBets;
@@ -87,19 +87,33 @@ contract Betl is Ownable {
   mapping(bytes32 => address) public hostAddresses;
   mapping(address => bytes32) public hostNames;
 
-  function getRoundId(address _host)
-    public
-    view
-    returns (bytes4)
-  {
-    return bytes4(keccak256(abi.encodePacked(_host, hostContext[_host].nextRoundId-1)));
+  // function getRoundId(address _host)
+  //   public
+  //   view
+  //   returns (bytes4)
+  // {
+  //   return bytes4(keccak256(abi.encodePacked(_host, hostContext[_host].nextRoundId)));
+  // }
+  function getRoundId(address _host) public view returns (bytes4) {
+    uint nextRoundNumber = getNextRoundNumber(_host);
+    require(nextRoundNumber > 0);
+    bytes32 hash = keccak256(abi.encodePacked(_host, nextRoundNumber-1));
+    return bytes4(hash);
   }
 
+  function getNextRoundId(address _host) public view returns (bytes4) {
+    bytes32 hash = keccak256(abi.encodePacked(_host, hostContext[_host].nextRoundNumber));
+    return bytes4(hash);
+  }
+
+  function getNextRoundNumber(address _host) public view returns (uint) {
+    return hostContext[_host].nextRoundNumber;
+  }
 
   // ADD/TODO/TOTHINK?:
   // - bool _hasMultipleWinners --> rather no. Host has no reason to cheat --> loss of reputation
   // - modeCode usefulness?
-  // configData[ timout, minBet, hostShare ]
+  // configData[ timeout, minBet, hostShare ]
   // COSTS: 294518 gas -> @ 5Gwei: 1 dollar
   function createRound (
     bytes32 _question,
@@ -116,7 +130,7 @@ contract Betl is Ownable {
     require(_configData[2] <= 100);
     require(_payoutTiers.length <= _options.length);
 
-    uint id = hostContext[msg.sender].nextRoundId;
+    uint id = getNextRoundNumber(msg.sender);
     // TODO: check if we really need this check
     // if (id > 0) {
     //   Status status = rounds[msg.sender][getRoundId(msg.sender)].status;
@@ -159,11 +173,11 @@ contract Betl is Ownable {
       stats
     );
     
-    bytes4 roundId = bytes4(keccak256(abi.encodePacked(msg.sender, id)));
+    bytes4 roundId = getNextRoundId(msg.sender);
     rounds[msg.sender][roundId] = round;
 
     // post creation
-    hostContext[msg.sender].nextRoundId += 1;
+    hostContext[msg.sender].nextRoundNumber += 1;
     hostContext[msg.sender].totalPoolSize += msg.value;
 
     emit RoundCreated(msg.sender, roundId);
@@ -174,13 +188,13 @@ contract Betl is Ownable {
     view // status, createdAt, timeoutAt, question, numOptions, numBets, poolSize
     returns (uint, uint, uint, uint, bytes32, uint, uint, uint)
   {
-    uint nextRoundId = hostContext[_hostAddress].nextRoundId;
-    require(nextRoundId > 0, 'Host has not created any round yet');
+    uint nextRoundNumber = hostContext[_hostAddress].nextRoundNumber;
+    require(nextRoundNumber > 0, 'Host has not created any round yet');
     Round storage round = rounds[_hostAddress][_roundId];
     require(round.status != Status.UNDEFINED, 'Round does not exist');
 
     return (
-      nextRoundId-1,
+      nextRoundNumber-1,
       uint8(round.status),
       round.config.createdAt,
       round.config.timeoutAt,
@@ -252,7 +266,7 @@ contract Betl is Ownable {
   }
 
   function bet (address _host, bytes4 _roundId, bytes32 _optionId) external payable {
-    require(_roundId == getRoundId(msg.sender));
+    require(_roundId == getRoundId(_host));
     require(rounds[_host][_roundId].status == Status.OPEN);
     require(msg.value >= rounds[_host][_roundId].config.minBet);
     require(rounds[_host][_roundId].options.optionLookup[_optionId] == true);

@@ -24,7 +24,7 @@ class Create extends Component {
       isButtonRemoveOutcomeDisabled: true,
 
       isCreateLoading: false,
-      createdRound: '',
+      createdRoundId: '',
 
       timeoutMin: Number(process.env.REACT_APP_DEFAULT_TIMEOUT_MIN),
       timeoutSec: Number(process.env.REACT_APP_DEFAULT_TIMEOUT_SEC),
@@ -113,10 +113,10 @@ class Create extends Component {
       [100],                                              // payout tiers
       this.props.getOptions()
     ).then(async (r) => {
-      console.log('Success!')
-      console.log(r)
+      console.log('Success: createRound')
       const roundId = await this.props.betl.getRoundId(this.props.userAddress)
       console.log('roundid: ' + roundId)
+      this.setState({ createdRoundId: roundId })
     }).catch(err => {
       console.log('Error')
       console.log(err)
@@ -126,9 +126,22 @@ class Create extends Component {
   }
 
   render() {
+    if (this.state.createdRoundId !== '') {
+      return (
+        <div>
+          <WelcomeHost>
+            {this.props.userName}
+          </WelcomeHost>
+
+          <RoundCreated
+            hostId={this.props.userAddress}
+            roundId={this.state.createdRoundId} />
+        </div>
+      )
+    }
+
     return (
       <div>
-        
         <WelcomeHost>
           {this.props.userName}
         </WelcomeHost>
@@ -378,6 +391,24 @@ const OptionNumberInput = ({ min, max, step, placeholder, unit, onChange, value 
           {unit}
         </a>
       </p>
+    </div>
+  )
+}
+
+const RoundCreated = ({ hostId, createdRoundId }) => {
+  return (
+    <div className="message is-success">
+      <div className="message-header">
+        Success!
+      </div>
+      <div className="message-body field is-grouped is-fullwidth">  
+        <p className="control is-expanded">
+          Your community can join you with this link:<br />
+          <span className="monotype">
+            betl.github.io/{hostId}/<b>{createdRoundId}</b>
+          </span>
+        </p>
+      </div>
     </div>
   )
 }

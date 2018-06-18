@@ -10,39 +10,71 @@ class HostRound extends Component {
   	super(props)
     this.state = {
       hostId: props.match.params.hostId.toLowerCase(),
-      roundId: props.match.params.roundId.toLowerCase(),
 
-      roundExists: true,
-      status: 'OPEN',
-      question: 'Will we win?',
-      numOptions: 0,
-      options: [],
-      optionsBetPool: [],
-      optionsBetNum: []
+      // contract expects byte parameters to be prefixed with '0x'
+      roundId: '0x' + props.match.params.roundId.toLowerCase(),
+      roundNumber: 0,
+      status: 0,
+      createdAt: 0,
+      timeoutAt: 0,
+      question: '',
+      numOutcomes: 0,
+      numBets: 0,
+      poolSize: 0,
+      outcomes: [],
+      outcomesBetPool: [],
+      outcomesBetNum: []
     }
   }
 
   componentDidMount = async () => {
-    //this.getHostInfo(this.state.hostId)
-    // if (this.state.hostAddress === ZERO_ADDRESS) {
-    //   this.setState({ roundExists: false })
-    // }
-    this.props.betl.getRound(this.state.hostId, this.state.roundId).then(r => {
-      console.log('Success: getRound')
-      console.log(r)
-      let [id, status, createdAt, timeoutAt, question, numOptions, numBets, poolSize] = r
-      console.log(Number(id) + ', ' + String(id))
-      console.log(Number(status))
-      console.log(Number(createdAt))
-      console.log(Number(timeoutAt))
+    // Try to fetch basic round data.
+    // If round exists, fetch full round data
+    this.getRound().then(() => {
+      this.getRoundOutcomes()
+      this.getRoundOutcomePools()
+      this.getRoundOutcomeNumBets()
     }).catch(err => {
-      console.log('Error: getRound')
-      console.log(err)
+      this.setState({ status: 0 })
+      console.log('Error: Round is invalid')
     })
-    // get host.address
-    // get status, timeout
-    // get question
-    // get numOptions, options, optionsBetPool. optionsBetNum
+  }
+
+  getRound = async () => {
+    return new Promise((resolve, reject) => {
+      this.props.betl.getRound(this.state.hostId, this.state.roundId).then(r => {
+        let [roundNumber, status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize] = r
+        if (Number(status) === 0) reject()
+
+        console.log('Success: getRound (id: ' + this.state.roundId + ')')
+
+        this.setState({
+          roundNumber: Number(roundNumber),
+          status: Number(status),
+          createdAt: Number(createdAt),
+          timeoutAt: Number(timeoutAt),
+          question: this.props.web3.utils.hexToUtf8(question),
+          numOutcomes: Number(numOutcomes),
+          numBets: Number(numBets),
+          poolSize: Number(poolSize),
+        })
+        resolve()
+      }).catch(err => {
+        reject()
+      })
+    })
+  }
+
+  getRoundOutcomes = async () => {
+    // TODO: implement
+  }
+
+  getRoundOutcomePools = async () => {
+   // TODO: implement 
+  }
+
+  getRoundOutcomeNumBets = async () => {
+    // TODO: implement
   }
 
   getHostInfo = async (hostId) => {
@@ -70,10 +102,6 @@ class HostRound extends Component {
       </div>
     );
   }
-}
-
-const HostInfo = ({name}) => {
-  return <div>{name}:</div>
 }
 
 // Wrap with React context consumer to provide web3 context
