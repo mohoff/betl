@@ -66,7 +66,10 @@ class HostRound extends Component {
   }
 
   getRoundOutcomes = async () => {
-    // TODO: implement
+    this.props.betl.getRoundOutcomes(this.state.hostId, this.state.roundId).then(r => {
+      console.log('getRoundCoutcomes')
+      console.log(r)
+    })
   }
 
   getRoundOutcomePools = async () => {

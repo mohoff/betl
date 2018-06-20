@@ -9,6 +9,7 @@ contract Betl is Ownable {
   uint private constant FEE_PERCENT = 1;
   uint private constant MIN_TIMEOUT = 1 minutes;
   uint private constant MODE_WHATEVER = 0;       // usecase for modes?
+  uint private constant MAX_OUTCOMES = 10;
 
   enum Status {
     UNDEFINED,
@@ -18,6 +19,10 @@ contract Betl is Ownable {
     CANCELLED,
     TIMEOUT
   }
+
+  // Errors
+  string constant HOST_NAME_NOT_FOUND = 'HOST_NAME_NOT_FOUND';
+  string constant HOST_OR_ROUND_NOT_FOUND = 'HOST_OR_ROUND_NOT_FOUND';
 
   event RoundCreated(address indexed host, bytes4 roundId);
   event RoundFinished(address indexed host, bytes4 roundId);
@@ -45,11 +50,9 @@ contract Betl is Ownable {
 
   // has to be aligned with RoundConfig(Ext)
   struct RoundResults {
-    // can only contain 1 winner, or multiple ones. Primary winner specified first followed by lower tier orders in DESC order
-    // EDIT: an uint-array in the same order as bytes32[]-options. Every option has attributed payoutTier associated.
-    // Example: 5 outcomes, winner takes it all, outcome[1] got picked as winner. Then: pickedOutcomes == [0, 100, 0, 0, 0]
-    uint[] pickedOutcomes;
     uint[] outcomePayouts; // in wei
+    //    hash(opt) => winShare [0-100]
+    mapping(bytes32 => uint) outcomeWinShares;
   }
 
   struct RoundStats {
@@ -157,7 +160,6 @@ contract Betl is Ownable {
     );
 
     RoundResults memory results = RoundResults(
-      new uint[](0),
       new uint[](0)
     );
 
@@ -186,6 +188,15 @@ contract Betl is Ownable {
     emit RoundCreated(msg.sender, roundId);
   }
 
+  function getRound (bytes32 _hostName, bytes4 _roundId) 
+    external
+    view // status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus
+    returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint)
+  {
+    require(hostAddresses[_hostName] != address(0), 'Host does not exist');
+    return getRound(hostAddresses[_hostName], _roundId);
+  }
+
   function getRound (address _hostAddress, bytes4 _roundId)
     public
     view // status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus
@@ -209,242 +220,64 @@ contract Betl is Ownable {
     );
   }
 
-  function getRound (bytes32 _hostName, bytes4 _roundId) 
-    external
-    view // status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus
-    returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint)
-  {
+  function getRoundOutcomes (bytes32 _hostName, bytes4 _roundId) external view returns (bytes32[]) {
     require(hostAddresses[_hostName] != address(0), 'Host does not exist');
-    return getRound(hostAddresses[_hostName], _roundId);
-  }
-
-  function getRoundOutcomes (
-    address _host,
-    bytes4 _roundId
-  )
-    external
-    view
-    returns (bytes32, bytes32, bytes32, bytes32, bytes32, bytes32, bytes32, bytes32, bytes32, bytes32)
-  {
-    uint numOutcomes = rounds[_host][_roundId].outcomes.numOutcomes;
-    bytes32[] storage o = rounds[_host][_roundId].outcomes.outcomes;
-
-    // numOutcomes if expected to be low so we check in increasing order
-    if (numOutcomes == 2) {
-      return (o[0], o[1], 0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 3) {
-      return (o[0], o[1], o[2], 0, 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 4) {
-      return (o[0], o[1], o[2], o[3], 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 5) {
-      return (o[0], o[1], o[2], o[3], o[4], 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 6) {
-      return (o[0], o[1], o[2], o[3], o[4], o[5], 0, 0, 0, 0);
-    }
-    if (numOutcomes == 7) {
-      return (o[0], o[1], o[2], o[3], o[4], o[5], o[6], 0, 0, 0);
-    }
-    if (numOutcomes == 8) {
-      return (o[0], o[1], o[2], o[3], o[4], o[5], o[6], o[7], 0, 0);
-    }
-    if (numOutcomes == 9) {
-      return (o[0], o[1], o[2], o[3], o[4], o[5], o[6], o[7], o[8], 0);
-    }
-    if (numOutcomes == 10) {
-      return (o[0], o[1], o[2], o[3], o[4], o[5], o[6], o[7], o[8], o[9]);
-    }
-  }
-
-  function getPoolFor(bytes32 _outcome, Round storage _r) private view returns (uint) {
-    bytes32 hashOutcome = keccak256(_outcome);
-    return _r.outcomePools[hashOutcome];
-  }
-
-  function getRoundOutcomePools (
-    address _host,
-    bytes4 _roundId
-  )
-    external
-    view
-    returns (uint, uint, uint, uint, uint, uint, uint, uint, uint, uint)
-  {
-    Round storage r = rounds[_host][_roundId];
-    uint numOutcomes = r.outcomes.numOutcomes;
-    bytes32[] storage o = r.outcomes.outcomes;
-
-    // numOutcomes if expected to be low so we check in increasing order
-    if (numOutcomes == 2) {
-      return (getPoolFor(o[0], r), getPoolFor(o[1], r), 0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 3) {
-      return (getPoolFor(o[0], r), getPoolFor(o[1], r), getPoolFor(o[2], r), 0, 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 4) {
-      return (getPoolFor(o[0], r), getPoolFor(o[1], r), getPoolFor(o[2], r), getPoolFor(o[3], r), 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 5) {
-      return (getPoolFor(o[0], r), getPoolFor(o[1], r), getPoolFor(o[2], r), getPoolFor(o[3], r), getPoolFor(o[4], r), 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 6) {
-      return (getPoolFor(o[0], r), getPoolFor(o[1], r), getPoolFor(o[2], r), getPoolFor(o[3], r), getPoolFor(o[4], r), getPoolFor(o[5], r), 0, 0, 0, 0);
-    }
-    if (numOutcomes == 7) {
-      return (getPoolFor(o[0], r), getPoolFor(o[1], r), getPoolFor(o[2], r), getPoolFor(o[3], r), getPoolFor(o[4], r), getPoolFor(o[5], r), getPoolFor(o[6], r), 0, 0, 0);
-    }
-    if (numOutcomes == 8) {
-      return (getPoolFor(o[0], r), getPoolFor(o[1], r), getPoolFor(o[2], r), getPoolFor(o[3], r), getPoolFor(o[4], r), getPoolFor(o[5], r), getPoolFor(o[6], r), getPoolFor(o[7], r), 0, 0);
-    }
-    if (numOutcomes == 9) {
-      return (getPoolFor(o[0], r), getPoolFor(o[1], r), getPoolFor(o[2], r), getPoolFor(o[3], r), getPoolFor(o[4], r), getPoolFor(o[5], r), getPoolFor(o[6], r), getPoolFor(o[7], r), getPoolFor(o[8], r), 0);
-    }
-    if (numOutcomes == 10) {
-      return (getPoolFor(o[0], r), getPoolFor(o[1], r), getPoolFor(o[2], r), getPoolFor(o[3], r), getPoolFor(o[4], r), getPoolFor(o[5], r), getPoolFor(o[6], r), getPoolFor(o[7], r), getPoolFor(o[8], r), getPoolFor(o[9], r));
-    }
-  }
-
-  function getNumBetFor(bytes32 _outcome, Round storage _r) private view returns (uint) {
-    bytes32 hashOutcome = keccak256(_outcome);
-    return _r.outcomeNumBets[hashOutcome];
+    return getRoundOutcomes(hostAddresses[_hostName], _roundId);
   }
   
-  function getRoundOutcomeNumBets (
-    address _host,
-    bytes4 _roundId
-  )
-    external
-    view
-    returns (uint, uint, uint, uint, uint, uint, uint, uint, uint, uint)
-  {
-    Round storage r = rounds[_host][_roundId];
-    uint numOutcomes = r.outcomes.numOutcomes;
-    bytes32[] storage o = r.outcomes.outcomes;
-
-    // numOutcomes if expected to be low so we check in increasing order
-    if (numOutcomes == 2) {
-      return (getNumBetFor(o[0], r), getNumBetFor(o[1], r), 0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 3) {
-      return (getNumBetFor(o[0], r), getNumBetFor(o[1], r), getNumBetFor(o[2], r), 0, 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 4) {
-      return (getNumBetFor(o[0], r), getNumBetFor(o[1], r), getNumBetFor(o[2], r), getNumBetFor(o[3], r), 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 5) {
-      return (getNumBetFor(o[0], r), getNumBetFor(o[1], r), getNumBetFor(o[2], r), getNumBetFor(o[3], r), getNumBetFor(o[4], r), 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 6) {
-      return (getNumBetFor(o[0], r), getNumBetFor(o[1], r), getNumBetFor(o[2], r), getNumBetFor(o[3], r), getNumBetFor(o[4], r), getNumBetFor(o[5], r), 0, 0, 0, 0);
-    }
-    if (numOutcomes == 7) {
-      return (getNumBetFor(o[0], r), getNumBetFor(o[1], r), getNumBetFor(o[2], r), getNumBetFor(o[3], r), getNumBetFor(o[4], r), getNumBetFor(o[5], r), getNumBetFor(o[6], r), 0, 0, 0);
-    }
-    if (numOutcomes == 8) {
-      return (getNumBetFor(o[0], r), getNumBetFor(o[1], r), getNumBetFor(o[2], r), getNumBetFor(o[3], r), getNumBetFor(o[4], r), getNumBetFor(o[5], r), getNumBetFor(o[6], r), getNumBetFor(o[7], r), 0, 0);
-    }
-    if (numOutcomes == 9) {
-      return (getNumBetFor(o[0], r), getNumBetFor(o[1], r), getNumBetFor(o[2], r), getNumBetFor(o[3], r), getNumBetFor(o[4], r), getNumBetFor(o[5], r), getNumBetFor(o[6], r), getNumBetFor(o[7], r), getNumBetFor(o[8], r), 0);
-    }
-    if (numOutcomes == 10) {
-      return (getNumBetFor(o[0], r), getNumBetFor(o[1], r), getNumBetFor(o[2], r), getNumBetFor(o[3], r), getNumBetFor(o[4], r), getNumBetFor(o[5], r), getNumBetFor(o[6], r), getNumBetFor(o[7], r), getNumBetFor(o[8], r), getNumBetFor(o[9], r));
-    }
+  function getRoundOutcomes (address _host, bytes4 _roundId) public view returns (bytes32[]) {
+    return rounds[_host][_roundId].outcomes.outcomes;
   }
 
-  function getMyBetFor(bytes32 outcome, Round storage _r) private view returns (uint) {
-    bytes32 hashOutcome = keccak256(outcome);
-    return _r.playerBets[hashOutcome][msg.sender];
+  function getRoundOutcomePool (bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
+    return getRoundOutcomePool(hostAddresses[_hostName], _roundId, _outcomeHash);
   }
   
-  function getMyRoundOutcomeBets (
-    address _host,
-    bytes4 _roundId
-  )
-    external
-    view
-    returns (uint, uint, uint, uint, uint, uint, uint, uint, uint, uint)
-  {
-    Round storage r = rounds[_host][_roundId];
-    uint numOutcomes = r.outcomes.numOutcomes;
-    bytes32[] storage o = r.outcomes.outcomes;
-
-    // numOutcomes if expected to be low so we check in increasing order
-    if (numOutcomes == 2) {
-      return (getMyBetFor(o[0], r), getMyBetFor(o[1], r), 0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 3) {
-      return (getMyBetFor(o[0], r), getMyBetFor(o[1], r), getMyBetFor(o[2], r), 0, 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 4) {
-      return (getMyBetFor(o[0], r), getMyBetFor(o[1], r), getMyBetFor(o[2], r), getMyBetFor(o[3], r), 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 5) {
-      return (getMyBetFor(o[0], r), getMyBetFor(o[1], r), getMyBetFor(o[2], r), getMyBetFor(o[3], r), getMyBetFor(o[4], r), 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 6) {
-      return (getMyBetFor(o[0], r), getMyBetFor(o[1], r), getMyBetFor(o[2], r), getMyBetFor(o[3], r), getMyBetFor(o[4], r), getMyBetFor(o[5], r), 0, 0, 0, 0);
-    }
-    if (numOutcomes == 7) {
-      return (getMyBetFor(o[0], r), getMyBetFor(o[1], r), getMyBetFor(o[2], r), getMyBetFor(o[3], r), getMyBetFor(o[4], r), getMyBetFor(o[5], r), getMyBetFor(o[6], r), 0, 0, 0);
-    }
-    if (numOutcomes == 8) {
-      return (getMyBetFor(o[0], r), getMyBetFor(o[1], r), getMyBetFor(o[2], r), getMyBetFor(o[3], r), getMyBetFor(o[4], r), getMyBetFor(o[5], r), getMyBetFor(o[6], r), getMyBetFor(o[7], r), 0, 0);
-    }
-    if (numOutcomes == 9) {
-      return (getMyBetFor(o[0], r), getMyBetFor(o[1], r), getMyBetFor(o[2], r), getMyBetFor(o[3], r), getMyBetFor(o[4], r), getMyBetFor(o[5], r), getMyBetFor(o[6], r), getMyBetFor(o[7], r), getMyBetFor(o[8], r), 0);
-    }
-    if (numOutcomes == 10) {
-      return (getMyBetFor(o[0], r), getMyBetFor(o[1], r), getMyBetFor(o[2], r), getMyBetFor(o[3], r), getMyBetFor(o[4], r), getMyBetFor(o[5], r), getMyBetFor(o[6], r), getMyBetFor(o[7], r), getMyBetFor(o[8], r), getMyBetFor(o[9], r));
-    }
+  function getRoundOutcomePool (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
+    require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
+    return rounds[_host][_roundId].outcomePools[_outcomeHash];
   }
 
-  function getRoundPickedOutcomes (
-    address _host,
-    bytes4 _roundId
-  )
-    external
-    view
-    returns (uint, uint, uint, uint, uint, uint, uint, uint, uint, uint)
-  {
-    uint numOutcomes = rounds[_host][_roundId].outcomes.numOutcomes;
-    uint[] storage p = rounds[_host][_roundId].results.pickedOutcomes;
+  function getRoundOutcomeNumBets (bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
+    return getRoundOutcomeNumBets(hostAddresses[_hostName], _roundId, _outcomeHash);
+  }
+  
+  function getRoundOutcomeNumBets (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
+    require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
+    return rounds[_host][_roundId].outcomeNumBets[_outcomeHash];
+  }
 
-    // numOutcomes if expected to be low so we check in increasing order
-    if (numOutcomes == 2) {
-      return (p[0], p[1], 0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 3) {
-      return (p[0], p[1], p[2], 0, 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 4) {
-      return (p[0], p[1], p[2], p[3], 0, 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 5) {
-      return (p[0], p[1], p[2], p[3], p[4], 0, 0, 0, 0, 0);
-    }
-    if (numOutcomes == 6) {
-      return (p[0], p[1], p[2], p[3], p[4], p[5], 0, 0, 0, 0);
-    }
-    if (numOutcomes == 7) {
-      return (p[0], p[1], p[2], p[3], p[4], p[5], p[6], 0, 0, 0);
-    }
-    if (numOutcomes == 8) {
-      return (p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], 0, 0);
-    }
-    if (numOutcomes == 9) {
-      return (p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], 0);
-    }
-    if (numOutcomes == 10) {
-      return (p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9]);
-    }
+  function getMyRoundOutcomeBet (bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
+    return getMyRoundOutcomeBet(hostAddresses[_hostName], _roundId, _outcomeHash);
+  }
+  
+  function getMyRoundOutcomeBet (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
+    require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
+    return rounds[_host][_roundId].playerBets[_outcomeHash][msg.sender];
+  }
+
+  function getRoundOutcomeWinShare (bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
+    return getRoundOutcomeWinShare(hostAddresses[_hostName], _roundId, _outcomeHash);
+  }
+  
+  function getRoundOutcomeWinShare (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
+    require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
+    return rounds[_host][_roundId].results.outcomeWinShares[_outcomeHash];
   }
 
   //                                          numRoundsCreated, numRoundsCancelled, numBets, poolSize
-  function getRoundStatsForHost (address _host) external view returns (uint, uint, uint, uint) {
+  function getHostStats (address _host) external view returns (uint, uint, uint, uint) {
     HostContext storage hc = hostContext[_host];
-    return (hc.numRoundsSuccess, hc.numRoundsCancelled, hc.totalNumBets, hc.totalPoolSize);
+    return (
+      hc.numRoundsSuccess,
+      hc.numRoundsCancelled,
+      hc.totalNumBets,
+      hc.totalPoolSize
+    );
   }
   // function addOutcomeForRound (address _host, bytes4 _roundId, bytes32 _outcome) external {
   //   //additional check needed to make sure that round exists?
@@ -459,13 +292,11 @@ contract Betl is Ownable {
   // }
 
   // always takes newest rounds.
-  function pickWinnerAndEnd (uint[] _winners) external payable {
-    bytes4 roundId = getRoundId(msg.sender);
-
-    Status status = rounds[msg.sender][roundId].status;
+  function pickWinnerAndEnd (uint[] _winners, bytes4 _roundId) external payable {
+    Status status = rounds[msg.sender][_roundId].status;
     require(status == Status.OPEN || status == Status.CLOSED); // Host can either end running or closed Round
-    require(_winners.length <= rounds[msg.sender][roundId].outcomes.numOutcomes);
-    require(now < rounds[msg.sender][roundId].config.timeoutAt); // --> cancelInternal when timeoutAt reached? Nahh. move to Closed?
+    require(_winners.length <= rounds[msg.sender][_roundId].outcomes.numOutcomes);
+    require(now < rounds[msg.sender][_roundId].config.timeoutAt); // --> cancelInternal when timeoutAt reached? Nahh. move to Closed?
     
 
     // TODO: redistribute payouts
@@ -474,11 +305,11 @@ contract Betl is Ownable {
     // payouts = remaining pool
 
 
-    hostContext[msg.sender].totalNumBets += rounds[msg.sender][roundId].stats.numBets;
-    hostContext[msg.sender].totalPoolSize += (rounds[msg.sender][roundId].stats.poolSize + msg.value);
+    hostContext[msg.sender].totalNumBets += rounds[msg.sender][_roundId].stats.numBets;
+    hostContext[msg.sender].totalPoolSize += (rounds[msg.sender][_roundId].stats.poolSize + msg.value);
     hostContext[msg.sender].numRoundsSuccess += 1;
-    rounds[msg.sender][roundId].status == Status.FINISHED;
-    emit RoundFinished(msg.sender, roundId);
+    rounds[msg.sender][_roundId].status == Status.FINISHED;
+    emit RoundFinished(msg.sender, _roundId);
   }
 
   function bet (address _host, bytes4 _roundId, bytes32 _outcomeId) external payable {
@@ -496,36 +327,57 @@ contract Betl is Ownable {
   }
 
   function claimPayout (address _host, bytes4 _roundId) external {
-    require(_roundId == getRoundId(_host));
     require(rounds[_host][_roundId].status == Status.FINISHED);
 
-    uint payout;
-    RoundResults storage results = rounds[_host][_roundId].results;
-    uint all = rounds[_host][_roundId].stats.poolSize;
+    Round storage round = rounds[_host][_roundId];
+    uint myPayout;
 
-    // In case host only picked one winner, this is one iteration
-    // TODO: rework this with new pickedOutcome[]
-    for(uint i=0; i<results.pickedOutcomes.length; i++) {
-      uint pickedOutcome = results.pickedOutcomes[i];
-      uint playerBet = rounds[_host][_roundId].playerBets[pickedOutcome][msg.sender];
+    for(uint i=0; i<round.outcomes.outcomes.length; i++) {
+      bytes32 outcome = keccak256(abi.encodePacked(round.outcomes.outcomes[i]));
+      uint outcomeShare = round.results.outcomeWinShares[outcome];
 
-      if(playerBet > 0) {
-        // e.g. 2 (*1e20)
-        uint playerShare = (playerBet*1e20).div(rounds[_host][_roundId].outcomePools[pickedOutcome]);
-        // e.g. 70
-        uint outcomeShare = rounds[_host][_roundId].outcomes.payoutTiers[i];
+      if (outcomeShare == 0) {
+        continue;
+      }
+   
+      uint myOutcomePayout = getMyPayoutForOutcome(
+          round.playerBets[outcome][msg.sender],
+          outcomeShare,
+          round.outcomePools[outcome],
+          round.stats.poolSize
+      );
 
-        // playerShare * outcomeShare = player payout for pickedOutcomes[i]
-        uint share = all.mul(outcomeShare).div(100).mul(playerShare).div(1e20);
-        payout += share;
+      if (myOutcomePayout > 0) {
+        myPayout = myPayout.add(myOutcomePayout);
 
-        // reset player bets so that they can't be claimed again
-        rounds[_host][_roundId].playerBets[pickedOutcome][msg.sender] = 0;
+        // Reset player bets so that they can't be claimed again
+        round.playerBets[outcome][msg.sender] = 0;
+      }
+
+      // Optimization that skips iterations in case an outcome got picked as only
+      // winner (outcomeShare == 100 (%)) which is expeceted to be often the case
+      if (outcomeShare == 100) {
+        break;
       }
     }
 
-    require(payout > 0);
-    msg.sender.transfer(payout);
+    require(myPayout > 0);
+    msg.sender.transfer(myPayout);
+  }
+
+  function getMyPayoutForOutcome(uint _myBet, uint _outcomeShare, uint _outcomePool, uint _roundPool) pure private returns (uint) {
+    if (_myBet > 0) {
+      uint myOutcomeShare = (_myBet*1e20).div(_outcomePool);
+
+      uint myOutcomePayout = _roundPool
+          .mul(_outcomeShare)
+          .div(100)
+          .mul(myOutcomeShare)
+          .div(1e20);
+
+      return myOutcomePayout;
+    }
+    return 0;
   }
 
   function cancelRound () external {
