@@ -93,13 +93,15 @@ contract Betl is Ownable {
   mapping(bytes32 => address) public hostAddresses;
   mapping(address => bytes32) public hostNames;
 
-  // function getRoundId(address _host)
-  //   public
-  //   view
-  //   returns (bytes4)
-  // {
-  //   return bytes4(keccak256(abi.encodePacked(_host, hostContext[_host].nextRoundId)));
-  // }
+  modifier roundExists(address _host, bytes4 _roundId) {
+    require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
+    _;
+  }
+
+  function getRound(address _host, bytes4 _roundId) private view roundExists(_hostId, roundId) returns (Round) {
+    return rounds[_host][_roundId];
+  }
+
   function getRoundId(address _host) public view returns (bytes4) {
     uint nextRoundNumber = getNextRoundNumber(_host);
     require(nextRoundNumber > 0);
@@ -121,7 +123,7 @@ contract Betl is Ownable {
   // - modeCode usefulness?
   // configData[ timeout, minBet, hostShare ]
   // COSTS: 294518 gas -> @ 5Gwei: 1 dollar
-  function createRound (
+  function createRound(
     bytes32 _question,
     bytes32[] _outcomes,
     uint[] _configData,
@@ -188,7 +190,7 @@ contract Betl is Ownable {
     emit RoundCreated(msg.sender, roundId);
   }
 
-  function getRound (bytes32 _hostName, bytes4 _roundId) 
+  function getRoundInfo(bytes32 _hostName, bytes4 _roundId) 
     external
     view // status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus
     returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint)
@@ -197,14 +199,16 @@ contract Betl is Ownable {
     return getRound(hostAddresses[_hostName], _roundId);
   }
 
-  function getRound (address _hostAddress, bytes4 _roundId)
+  function getRoundInfo(address _host, bytes4 _roundId)
     public
-    view // status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus
+    view
+    roundExists(_host, _roundId)
+    // status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus
     returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint)
   {
-    uint nextRoundNumber = hostContext[_hostAddress].nextRoundNumber;
+    uint nextRoundNumber = hostContext[_host].nextRoundNumber;
     require(nextRoundNumber > 0, 'Host has not created any round yet');
-    Round storage round = rounds[_hostAddress][_roundId];
+    Round storage round = rounds[_host][_roundId];
     require(round.status != Status.UNDEFINED, 'Round does not exist');
 
     return (
@@ -220,32 +224,30 @@ contract Betl is Ownable {
     );
   }
 
-  function getRoundOutcomes (bytes32 _hostName, bytes4 _roundId) external view returns (bytes32[]) {
+  function getRoundOutcomes(bytes32 _hostName, bytes4 _roundId) external view returns (bytes32[]) {
     require(hostAddresses[_hostName] != address(0), 'Host does not exist');
     return getRoundOutcomes(hostAddresses[_hostName], _roundId);
   }
   
-  function getRoundOutcomes (address _host, bytes4 _roundId) public view returns (bytes32[]) {
+  function getRoundOutcomes(address _host, bytes4 _roundId) public view roundExists(_host, _roundId) returns (bytes32[]) {
     return rounds[_host][_roundId].outcomes.outcomes;
   }
 
-  function getRoundOutcomePool (bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+  function getRoundOutcomePool(bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
     require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
     return getRoundOutcomePool(hostAddresses[_hostName], _roundId, _outcomeHash);
   }
   
-  function getRoundOutcomePool (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
-    require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
+  function getRoundOutcomePool(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view roundExists(_host, _roundId) returns (uint) {
     return rounds[_host][_roundId].outcomePools[_outcomeHash];
   }
 
-  function getRoundOutcomeNumBets (bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+  function getRoundOutcomeNumBets(bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
     require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
     return getRoundOutcomeNumBets(hostAddresses[_hostName], _roundId, _outcomeHash);
   }
   
-  function getRoundOutcomeNumBets (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
-    require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
+  function getRoundOutcomeNumBets(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view roundExists(_host, _roundId) returns (uint) {
     return rounds[_host][_roundId].outcomeNumBets[_outcomeHash];
   }
 
@@ -254,8 +256,7 @@ contract Betl is Ownable {
     return getMyRoundOutcomeBet(hostAddresses[_hostName], _roundId, _outcomeHash);
   }
   
-  function getMyRoundOutcomeBet (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
-    require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
+  function getMyRoundOutcomeBet (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view roundExists(_host, _roundId) returns (uint) {
     return rounds[_host][_roundId].playerBets[_outcomeHash][msg.sender];
   }
 
@@ -264,8 +265,7 @@ contract Betl is Ownable {
     return getRoundOutcomeWinShare(hostAddresses[_hostName], _roundId, _outcomeHash);
   }
   
-  function getRoundOutcomeWinShare (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
-    require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
+  function getRoundOutcomeWinShare (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view roundExists(_host, _roundId) returns (uint) {
     return rounds[_host][_roundId].results.outcomeWinShares[_outcomeHash];
   }
 
@@ -293,8 +293,9 @@ contract Betl is Ownable {
 
   // always takes newest rounds.
   function pickWinnerAndEnd (uint[] _winners, bytes4 _roundId) external payable {
-    Status status = rounds[msg.sender][_roundId].status;
-    require(status == Status.OPEN || status == Status.CLOSED); // Host can either end running or closed Round
+    Round storage r = getRound(msg.sender, _roundId);
+    require(r.status == Status.OPEN || r.status == Status.CLOSED);
+
     require(_winners.length <= rounds[msg.sender][_roundId].outcomes.numOutcomes);
     require(now < rounds[msg.sender][_roundId].config.timeoutAt); // --> cancelInternal when timeoutAt reached? Nahh. move to Closed?
     
@@ -312,46 +313,47 @@ contract Betl is Ownable {
     emit RoundFinished(msg.sender, _roundId);
   }
 
-  function bet (address _host, bytes4 _roundId, bytes32 _outcomeId) external payable {
-    require(_roundId == getRoundId(_host));
-    require(rounds[_host][_roundId].status == Status.OPEN);
-    require(msg.value >= rounds[_host][_roundId].config.minBet);
-    require(rounds[_host][_roundId].outcomes.outcomeLookup[_outcomeId] == true);
-    require(now < rounds[_host][_roundId].config.timeoutAt);
+  function bet(address _host, bytes4 _roundId, bytes32 _outcomeId) external payable {
+    Round storage r = getRound(_host, _roundId);
+    require(r.status == Status.OPEN);
+
+    require(msg.value >= rr.config.minBet);
+    require(r.outcomes.outcomeLookup[_outcomeId] == true);
+    require(now < r.config.timeoutAt);
   
-    rounds[_host][_roundId].playerBets[_outcomeId][msg.sender] += msg.value;
-    rounds[_host][_roundId].outcomePools[_outcomeId] += msg.value;
-    rounds[_host][_roundId].outcomeNumBets[_outcomeId] += 1;
-    rounds[_host][_roundId].stats.numBets += 1;
-    rounds[_host][_roundId].stats.poolSize += msg.value;
+    r.playerBets[_outcomeId][msg.sender] += msg.value;
+    r.outcomePools[_outcomeId] += msg.value;
+    r.outcomeNumBets[_outcomeId] += 1;
+    r.stats.numBets += 1;
+    r.stats.poolSize += msg.value;
   }
 
-  function claimPayout (address _host, bytes4 _roundId) external {
-    require(rounds[_host][_roundId].status == Status.FINISHED);
-
-    Round storage round = rounds[_host][_roundId];
+  function claimPayout(address _host, bytes4 _roundId) external {
+    Round storage r = getRound(_host, _roundId);
+    require(r.status == Status.FINISHED);
+    
     uint myPayout;
 
-    for(uint i=0; i<round.outcomes.outcomes.length; i++) {
-      bytes32 outcome = keccak256(abi.encodePacked(round.outcomes.outcomes[i]));
-      uint outcomeShare = round.results.outcomeWinShares[outcome];
+    for(uint i=0; i<r.outcomes.outcomes.length; i++) {
+      bytes32 outcome = keccak256(abi.encodePacked(r.outcomes.outcomes[i]));
+      uint outcomeShare = r.results.outcomeWinShares[outcome];
 
       if (outcomeShare == 0) {
         continue;
       }
    
       uint myOutcomePayout = getMyPayoutForOutcome(
-          round.playerBets[outcome][msg.sender],
+          r.playerBets[outcome][msg.sender],
           outcomeShare,
-          round.outcomePools[outcome],
-          round.stats.poolSize
+          r.outcomePools[outcome],
+          r.stats.poolSize
       );
 
       if (myOutcomePayout > 0) {
         myPayout = myPayout.add(myOutcomePayout);
 
         // Reset player bets so that they can't be claimed again
-        round.playerBets[outcome][msg.sender] = 0;
+        r.playerBets[outcome][msg.sender] = 0;
       }
 
       // Optimization that skips iterations in case an outcome got picked as only
@@ -380,15 +382,13 @@ contract Betl is Ownable {
     return 0;
   }
 
-  function cancelRound () external {
-    bytes4 roundId = getRoundId(msg.sender);
+  function cancelRound(bytes4 _roundId) external {
+    Round storage r = getRound(msg.sender, _roundId);
+    require(r.status == Status.SCHEDULED || r.status == Status.OPEN)
 
-    Status status = rounds[msg.sender][roundId].status;
-    require(status == Status.UNDEFINED || status == Status.OPEN); // check if round is cancelable
-
-    rounds[msg.sender][roundId].status = Status.CANCELLED;
+    rounds[msg.sender][_roundId].status = Status.CANCELLED;
     hostContext[msg.sender].numRoundsCancelled += 1;
-    emit RoundCanceled(msg.sender, roundId);
+    emit RoundCanceled(msg.sender, _roundId);
   }
 
 
@@ -396,7 +396,7 @@ contract Betl is Ownable {
   /// Management of `Username <-> address` mappings
   ///
 
-  function registerRecord (bytes32 _name)
+  function registerRecord(bytes32 _name)
     public
   {
     require(hostAddresses[_name] == address(0));
