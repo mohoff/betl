@@ -178,7 +178,7 @@ class Web3Wrapper extends Component {
   }
 
   isInitialMetaMaskCheckDone = () => {
-    return this.state.web3 !== null && this.state.account !== null &&  this.state.currentNetwork !== null
+    return this.state.web3 !== null && this.state.userAddress !== null &&  this.state.currentNetwork !== null
   }
 
   render = () => {
@@ -186,8 +186,7 @@ class Web3Wrapper extends Component {
       if (this.state.web3 === '') {
         return ( <MetaMaskNotAvailable /> )
       }
-
-      if (this.state.account === '') {
+      if (this.state.userAddress === '') {
         return ( <MetaMaskNotLoggedIn /> )
       }
       if (this.state.currentNetwork === '' || this.state.currentNetwork !== this.state.targetNetwork) {
@@ -243,7 +242,6 @@ class Web3Wrapper extends Component {
   }
 
   getOptions = (txName) => {
-    console.log(this.state.userAddress)
     return {
       from: this.state.userAddress,
       gas: this.getGas(txName),

@@ -105,11 +105,17 @@ contract Betl is Ownable {
   //   return bytes4(hash);
   // }
 
+  // Frontend needs to fetch roundId of created round.
+  function getNextRoundId(address _host) public view returns (bytes4) {
+    bytes32 hash = keccak256(abi.encodePacked(_host, hostContext[_host].nextRoundNumber));
+    return bytes4(hash);
+  }
+
   function generateRoundId(address _host) private returns (uint, bytes4) {
     uint roundNumber = hostContext[_host].nextRoundNumber;
-    bytes32 hash = keccak256(abi.encodePacked(_host, roundNumber));
+    bytes4 roundId = getNextRoundId(_host);
     hostContext[_host].nextRoundNumber += 1;
-    return (roundNumber, bytes4(hash));
+    return (roundNumber, roundId);
   }
 
   // ADD/TODO/TOTHINK?:
@@ -334,7 +340,7 @@ contract Betl is Ownable {
 
   function getRoundInfo(bytes32 _hostName, bytes4 _roundId) 
     external
-    view // status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus
+    view // roundNumber, status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee
     returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint, uint)
   {
     require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
@@ -345,7 +351,7 @@ contract Betl is Ownable {
     public
     view
     roundExists(_host, _roundId)
-    // status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee
+    // roundNumber, status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee
     returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint, uint)
   {
     Round storage r = getRound(_host, _roundId);

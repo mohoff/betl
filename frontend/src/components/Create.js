@@ -1,4 +1,5 @@
 import React, { Component } from 'react'
+import { Link } from 'react-router-dom'
 import { Web3Context } from './generic/Web3Wrapper'
 import Utils from '../utils/utils.js'
 import './Create.scss'
@@ -15,6 +16,7 @@ class Create extends Component {
   constructor(props) {
     super(props)
     let numOutcomes = 2
+
     this.state = {
       question: '',
       numOutcomes: numOutcomes,
@@ -24,6 +26,7 @@ class Create extends Component {
       isButtonRemoveOutcomeDisabled: true,
 
       isCreateLoading: false,
+      nextRoundId: '',
       createdRoundId: '',
 
       timeoutMin: Number(process.env.REACT_APP_DEFAULT_TIMEOUT_MIN),
@@ -35,6 +38,11 @@ class Create extends Component {
 
   componentDidMount = async () => {
     //this.getHostName()
+    this.props.betl.getNextRoundId(this.props.userAddress).then(r => {
+      this.setState({ nextRoundId: r.substring(2)})
+    }).catch(err => {
+      console.error('Couldn\'nt fetch nextRoundId')
+    })
   }
 
   handleQuestionChange = (event) => {
@@ -105,21 +113,24 @@ class Create extends Component {
     this.setState({ isCreateLoading: true })
     // TODO: input validation, make sure we have seconds below
     const timeoutAt = (new Date() / 1000 | 0) + this.state.timeoutMin*60 + this.state.timeoutSec
-    console.log('timeoutAt: ' + timeoutAt)
     this.props.betl.createRound(
-      this.state.question,   // TODO: toHex               // question
-      this.state.outcomes,   // TODO: toHEx               // outcomes
-      [timeoutAt, this.state.minBet, this.state.hostFee], // configData
-      [100],                                              // payout tiers
+      this.state.question,   // TODO: toHex                   // question
+      this.state.outcomes,   // TODO: toHex                   // outcomes
+      [0, timeoutAt, this.state.minBet, this.state.hostFee],  // configData
+      [100],                                                  // payout tiers
       this.props.getOptions()
     ).then(async (r) => {
       console.log('Success: createRound')
-      const roundId = await this.props.betl.getRoundId(this.props.userAddress)
-      console.log('roundid: ' + roundId)
-      this.setState({ createdRoundId: roundId })
+      const roundInfo = await this.props.betl.getRoundInfo(this.props.userAddress, this.state.nextRoundId)
+      //console.log('roundInfo: ' + roundInfo[1])
+      if (roundInfo[1] !== 0) {
+        this.setState({ createdRoundId: this.state.nextRoundId })
+      } else {
+        console.error('Something went wrong while creating the round. Expected non-zero roundId but got: ' + roundInfo[1])
+      }
     }).catch(err => {
       console.log('Error')
-      console.log(err)
+      console.error(err)
     }).finally(() => {
       this.setState({ isCreateLoading: false })
     })
@@ -134,7 +145,7 @@ class Create extends Component {
           </WelcomeHost>
 
           <RoundCreated
-            hostId={this.props.userAddress}
+            hostId={(this.props.userName !== '' ? this.props.userName : this.props.userAddress)}
             roundId={this.state.createdRoundId} />
         </div>
       )
@@ -395,22 +406,57 @@ const OptionNumberInput = ({ min, max, step, placeholder, unit, onChange, value 
   )
 }
 
-const RoundCreated = ({ hostId, createdRoundId }) => {
-  return (
-    <div className="message is-success">
-      <div className="message-header">
-        Success!
+class RoundCreated extends Component {
+  constructor(props) {
+    super(props)
+    this.roundPath = '/' + props.hostId + '/' + props.roundId
+    this.roundURL = process.env.REACT_APP_DOMAIN + this.roundPath
+  }
+
+  copyToClipboard = () => {
+    const tmp = document.createElement('textarea')
+    tmp.value = this.roundURL
+    document.body.appendChild(tmp)
+    tmp.select()
+    document.execCommand('copy')
+    document.body.removeChild(tmp)
+  }
+
+  render = () => {
+    return (
+      <div className="message is-primary">
+        <div className="message-header">
+          Success!
+        </div>
+        <div className="message-body field is-grouped is-fullwidth">  
+          <div className="control is-expanded">
+            Invite your community with this link:<br />
+            <br />
+
+            <div className="has-text-centered is-large">
+              <Link to={this.roundPath}>
+                <span className="monotype">
+                  betl.github.io/
+                    <span className="has-text-grey">...</span>/
+                    <b>{this.props.roundId}</b>
+                </span>
+              </Link>
+            </div>
+
+            <div className="has-text-centered copy-button">
+              <a className="button is-large is-primary is-outlined"
+                  onClick={this.copyToClipboard}>
+                <span className="icon">
+                  <i className="fas fa-copy"></i>
+                </span>
+              </a>
+            </div>
+
+          </div>
+        </div>
       </div>
-      <div className="message-body field is-grouped is-fullwidth">  
-        <p className="control is-expanded">
-          Your community can join you with this link:<br />
-          <span className="monotype">
-            betl.github.io/{hostId}/<b>{createdRoundId}</b>
-          </span>
-        </p>
-      </div>
-    </div>
-  )
+    )
+  }
 }
 
 // Wrap with React context consumer to provide web3 context

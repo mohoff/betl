@@ -55,10 +55,10 @@ main = async () => {
         //     address: '0xa8756f50c2069dEb913feEecf9abC68850f82C2c'.toLowerCase()
         // })
         .withFrom(owner)
-        .withGas(4000000)
+        .withGas(5000000) // 4700455
         .withGasPrice(10e9)
         .awaitInstance(web3, web3Wrapper)
-    console.log('Contract deployed at: ' + instance._address)
+    console.log('Contract deployed at: ' + instance._address.toLowerCase())
     process.exit()
 }
 main().catch(console.error)

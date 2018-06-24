@@ -1,6 +1,13 @@
 TODO
 ====
 
+Smart contract
+--------------
+- Make sure that only one round is created per blocktime to avoid shadow/dup rounds.
+
+
+Frontend
+--------
 - Make Registration box an own component
 - After 2s of showing <MetaMaskLoading/>, add text: 'Are you connected to the internet?'
 - <section>ify all components. are somehow more structure and consistent layout
