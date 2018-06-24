@@ -12,7 +12,8 @@ contract Betl is Ownable {
   uint private constant MAX_OUTCOMES = 10;
 
   enum Status {
-    UNDEFINED,
+    UNDEFINED, // Round doesn't exist
+    SCHEDULED, // Round exists and is scheduled for the future
     OPEN,
     CLOSED,
     FINISHED,
@@ -26,21 +27,11 @@ contract Betl is Ownable {
 
   event RoundCreated(address indexed host, bytes4 roundId);
   event RoundFinished(address indexed host, bytes4 roundId);
-  event RoundCanceled(address indexed host, bytes4 roundId);
+  event RoundCancelled(address indexed host, bytes4 roundId);
 
-  // Eventually divide into RoundConfig and RoundConfigExt. First one mandatory, latter outcomeal
-  // Default config: one winner, who takes it all.
-  struct RoundConfig {
-    uint createdAt;
-    uint timeoutAt;
-    uint minBet;
-    uint hostBonus; // or: add directly to roundstats += hostBonus
-  }
-
-  struct RoundOutcomes {
-    uint numOutcomes;
+  struct Outcomes {
     bytes32[] outcomes;
-    mapping(bytes32 => bool) outcomeLookup;
+    mapping(bytes32 => bool) lookup;
     // Specifies payout distributions in case multiple winners are possible
     // Example: When there are 3 winners, this array can be [60, 30, 10] ==> in percents, must sum to 100.
     // winnerTiers.length <= numOutcomes
@@ -48,26 +39,31 @@ contract Betl is Ownable {
     //bool hasFlexOutcomes;
   }
 
-  // has to be aligned with RoundConfig(Ext)
-  struct RoundResults {
-    uint[] outcomePayouts; // in wei
+  struct Results {
+    uint[] payouts;
     //    hash(opt) => winShare [0-100]
     mapping(bytes32 => uint) outcomeWinShares;
   }
 
-  struct RoundStats {
+  struct Stats {
     uint numBets;
     uint poolSize;
   }
 
   struct Round {
-    uint id;
+    uint roundNumber;
     Status status;
+    uint createdAt;
+    uint scheduledAt;
+    uint timeoutAt;
+    uint minBet;
+    uint hostBonus; // or: add directly to roundstats += hostBonus
+    uint hostFee;
+
     bytes32 question;
-    RoundConfig config;
-    RoundOutcomes outcomes;
-    RoundResults results;
-    RoundStats stats;
+    Outcomes outcomes;
+    Results results;
+    Stats stats;
     //    hash(opt) =>         player  => bet
     mapping(bytes32 => mapping(address => uint)) playerBets;
     //    hash(opt) => totalBets
@@ -98,134 +94,277 @@ contract Betl is Ownable {
     _;
   }
 
-  function getRound(address _host, bytes4 _roundId) private view roundExists(_hostId, roundId) returns (Round) {
+  function getRound(address _host, bytes4 _roundId) private view returns (Round storage) {
     return rounds[_host][_roundId];
   }
 
-  function getRoundId(address _host) public view returns (bytes4) {
-    uint nextRoundNumber = getNextRoundNumber(_host);
-    require(nextRoundNumber > 0);
-    bytes32 hash = keccak256(abi.encodePacked(_host, nextRoundNumber-1));
-    return bytes4(hash);
-  }
+  // function getRoundId(address _host) public view returns (bytes4) {
+  //   uint nextRoundNumber = getNextRoundNumber(_host);
+  //   require(nextRoundNumber > 0);
+  //   bytes32 hash = keccak256(abi.encodePacked(_host, nextRoundNumber-1));
+  //   return bytes4(hash);
+  // }
 
-  function getNextRoundId(address _host) public view returns (bytes4) {
-    bytes32 hash = keccak256(abi.encodePacked(_host, hostContext[_host].nextRoundNumber));
-    return bytes4(hash);
-  }
-
-  function getNextRoundNumber(address _host) public view returns (uint) {
-    return hostContext[_host].nextRoundNumber;
+  function generateRoundId(address _host) private returns (uint, bytes4) {
+    uint roundNumber = hostContext[_host].nextRoundNumber;
+    bytes32 hash = keccak256(abi.encodePacked(_host, roundNumber));
+    hostContext[_host].nextRoundNumber += 1;
+    return (roundNumber, bytes4(hash));
   }
 
   // ADD/TODO/TOTHINK?:
-  // - bool _hasMultipleWinners --> rather no. Host has no reason to cheat --> loss of reputation
-  // - modeCode usefulness?
-  // configData[ timeout, minBet, hostShare ]
+  // - modeCode usefulness? e.g. 'winner-takes-it-all', '80-20', '66-33', '66-25-9', '50-25-12.5-6.25-3.125'
+  // configData[ scheduledAt, timeout, minBet, hostShare ]
   // COSTS: 294518 gas -> @ 5Gwei: 1 dollar
   function createRound(
     bytes32 _question,
     bytes32[] _outcomes,
-    uint[] _configData,
+    uint[4] _configData, // array of format `[scheduledAt, timeout, minBet, hostFee]`
     uint[] _payoutTiers
-    //bool _hasFlexOutcomes
   )
     external
     payable
   {
-    require(_configData[0] >= MIN_TIMEOUT);
-    require(_outcomes.length >= 2);// || _hasFlexOutcomes == true);
-    require(_configData[2] <= 100);
+    require(_configData[0] == 0 || _configData[0] > now);
+    require(_configData[1] >= MIN_TIMEOUT);
+    require(_outcomes.length >= 2 && _outcomes.length <= MAX_OUTCOMES);
+    require(_configData[3] <= 100);
     require(_payoutTiers.length <= _outcomes.length);
 
-    uint id = getNextRoundNumber(msg.sender);
-    // TODO: check if we really need this check
-    // if (id > 0) {
-    //   Status status = rounds[msg.sender][getRoundId(msg.sender)].status;
-    //   require(status == Status.FINISHED ||
-    //     status == Status.CANCELLED || 
-    //     status == Status.TIMEOUT);
-    // }
-    //require(hostContext[msg.sender].roundIdLookup[_roundId] == false);
+    // Determine initial status depending on `scheduledAt`
+    // If scheduledAt == createdAt, the status is `Status.OPEN`
+    // If scheduledAt > createdAt, the status is `Status.SCHEDULED`
+    Status status = _configData[0] == 0 ? Status.OPEN : Status.SCHEDULED;
+    uint scheduledAt = _configData[0] == 0 ? _configData[1] : _configData[0];
 
-    RoundConfig memory config = RoundConfig(
-      now,
-      now + _configData[0],
-      _configData[1],
-      msg.value
+    Outcomes memory outcomes = Outcomes(
+      _outcomes,                        // outcomes
+      _payoutTiers                      // payout tiers in percent in DESC order
     );
 
-    RoundOutcomes memory outcomes = RoundOutcomes(
-      _outcomes.length,
-      _outcomes,
-      _payoutTiers
+    Results memory results = Results(
+      new uint[](_outcomes.length)      // payouts
     );
 
-    RoundResults memory results = RoundResults(
-      new uint[](0)
+    Stats memory stats = Stats(
+      0,                                // numBets
+      msg.value                         // poolSize
     );
 
-    RoundStats memory stats = RoundStats(
-      0,
-      msg.value
-    );
+    uint roundNumber;
+    bytes4 roundId;
+    (roundNumber, roundId) = generateRoundId(msg.sender);
 
-    Round memory round = Round(
-      id,
-      Status.OPEN,
+    rounds[msg.sender][roundId] = Round(
+      roundNumber,
+      status,                           // initial status
+      now,                              // createdAt
+      scheduledAt,                      // scheduledAt
+      scheduledAt + _configData[1],     // timeoutAt
+      _configData[2],                   // minBet
+      msg.value,                        // hostBonus
+      _configData[3],                   // hostFee
+
       _question,
-      config,
       outcomes,
       results,
       stats
     );
-    
-    bytes4 roundId = getNextRoundId(msg.sender);
-    rounds[msg.sender][roundId] = round;
-
-    // post creation
-    hostContext[msg.sender].nextRoundNumber += 1;
-    hostContext[msg.sender].totalPoolSize += msg.value;
 
     emit RoundCreated(msg.sender, roundId);
   }
 
+  function bet(address _host, bytes4 _roundId, bytes32 _outcomeId) external payable {
+    Round storage r = getRound(_host, _roundId);
+    require(r.status == Status.OPEN);
+
+    require(msg.value >= r.minBet);
+    require(r.outcomes.lookup[_outcomeId] == true);
+    require(now < r.timeoutAt);
+  
+    r.playerBets[_outcomeId][msg.sender] = r.playerBets[_outcomeId][msg.sender].add(msg.value);
+    r.outcomePools[_outcomeId] = r.outcomePools[_outcomeId].add(msg.value);
+    r.outcomeNumBets[_outcomeId] += 1;
+  } 
+
+  function pickWinnerAndEnd(uint[] _picks, bytes4 _roundId) external payable {
+    Round storage r = getRound(msg.sender, _roundId);
+    require(r.status == Status.OPEN || r.status == Status.CLOSED);
+
+    require(_picks.length == r.outcomes.outcomes.length);
+    require(now < r.timeoutAt); // --> cancelInternal when timeoutAt reached? Nahh. move to Closed?
+
+    uint ownerFee = r.stats.poolSize.mul(FEE_PERCENT).div(100);
+    uint remainingPool = r.stats.poolSize - ownerFee;
+    uint hostFee = r.stats.poolSize.mul(r.hostFee).div(100);
+    remainingPool = remainingPool - hostFee;
+
+    uint allShares;
+    uint numBets;
+    uint poolSize;
+
+    for (uint i=0; i<_picks.length; i++) {
+      uint outcomeShare = _picks[i];
+      bytes32 outcomeId = getOutcomeId(r, i);
+
+      if(outcomeShare == 0) continue;
+
+      require(outcomeShare <= 100);
+      allShares += outcomeShare;
+
+      // populate lookup to simplify getter function `getRoundOutcomeWinShare`
+      r.results.outcomeWinShares[outcomeId] = outcomeShare;
+
+      // distribute round pool
+      r.results.payouts[i] = remainingPool.mul(outcomeShare).div(100);
+
+      numBets = numBets.add(r.outcomeNumBets[outcomeId]);
+      poolSize = poolSize.add(r.outcomePools[outcomeId]);
+    }
+    require(allShares == 100);
+
+    r.stats.numBets = numBets;
+    r.stats.poolSize = poolSize.add(msg.value);
+    hostContext[msg.sender].totalNumBets += r.stats.numBets;
+    hostContext[msg.sender].totalPoolSize += r.stats.poolSize;
+    hostContext[msg.sender].numRoundsSuccess += 1;
+    r.status = Status.FINISHED;
+
+    owner.transfer(ownerFee);
+    if (hostFee > 0) msg.sender.transfer(hostFee);
+
+    emit RoundFinished(msg.sender, _roundId);
+  }
+
+  function areValidPicks(uint[] memory _picks) private pure returns (bool) {
+    uint sum;
+    for (uint i=0; i<_picks.length; i++) {
+      sum += _picks[i];
+    }
+    return sum == 100;
+  }
+
+  function getOutcomeId(Round storage _round, uint _outcomeIndex) private view returns (bytes32) {
+    return keccak256(abi.encodePacked(_round.outcomes.outcomes[_outcomeIndex]));
+  }
+
+  function claimPayout(address _host, bytes4 _roundId) external {
+    Round storage r = getRound(_host, _roundId);
+    require(r.status == Status.FINISHED);
+    
+    uint myPayout;
+
+    for (uint i=0; i<r.outcomes.outcomes.length; i++) {
+      bytes32 outcomeId = getOutcomeId(r, i);
+      uint outcomeShare = r.results.outcomeWinShares[outcomeId];
+
+      if (outcomeShare == 0) {
+        continue;
+      }
+   
+      uint myOutcomePayout = getMyPayoutForOutcome(
+          r.playerBets[outcomeId][msg.sender],
+          outcomeShare,
+          r.outcomePools[outcomeId],
+          r.stats.poolSize
+      );
+
+      if (myOutcomePayout > 0) {
+        myPayout = myPayout.add(myOutcomePayout);
+
+        // Reset player bets so that they can't be claimed again
+        r.playerBets[outcomeId][msg.sender] = 0;
+      }
+
+      // Minor optimization that skips iterations in case an outcome got picked as only
+      // winner (outcomeShare == 100 (%)) which is expeceted to be often the case
+      if (outcomeShare == 100) {
+        break;
+      }
+    }
+
+    require(myPayout > 0);
+    msg.sender.transfer(myPayout);
+  }
+
+  function claimRefund(address _host, bytes4 _roundId) external {
+    Round storage r = getRound(_host, _roundId);
+    require(r.status == Status.CANCELLED || r.status == Status.TIMEOUT);
+
+    uint myRefund;
+
+    for(uint i=0; i<r.outcomes.outcomes.length; i++) {
+      bytes32 outcomeId = getOutcomeId(r, i);
+      myRefund = myRefund.add(r.playerBets[outcomeId][msg.sender]);
+      r.playerBets[outcomeId][msg.sender] = 0;
+    }
+
+    require(myRefund > 0);
+    msg.sender.transfer(myRefund);
+  }
+
+  function getMyPayoutForOutcome(uint _myBet, uint _outcomeShare, uint _outcomePool, uint _roundPool) pure private returns (uint) {
+    if (_myBet > 0) {
+      uint myOutcomeShare = (_myBet*1e20).div(_outcomePool);
+
+      uint myOutcomePayout = _roundPool
+          .mul(_outcomeShare)
+          .div(100)
+          .mul(myOutcomeShare)
+          .div(1e20);
+
+      return myOutcomePayout;
+    }
+    return 0;
+  }
+
+  function cancelRound(bytes4 _roundId) external {
+    Round storage r = getRound(msg.sender, _roundId);
+    require(r.status == Status.SCHEDULED || r.status == Status.OPEN);
+
+    rounds[msg.sender][_roundId].status = Status.CANCELLED;
+    hostContext[msg.sender].numRoundsCancelled += 1;
+    emit RoundCancelled(msg.sender, _roundId);
+  }
+
+
+  ///
+  /// Getters used by UI
+  ///
+
   function getRoundInfo(bytes32 _hostName, bytes4 _roundId) 
     external
     view // status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus
-    returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint)
+    returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint, uint)
   {
-    require(hostAddresses[_hostName] != address(0), 'Host does not exist');
-    return getRound(hostAddresses[_hostName], _roundId);
+    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
+    return getRoundInfo(hostAddresses[_hostName], _roundId);
   }
 
   function getRoundInfo(address _host, bytes4 _roundId)
     public
     view
     roundExists(_host, _roundId)
-    // status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus
-    returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint)
+    // status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee
+    returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint, uint)
   {
-    uint nextRoundNumber = hostContext[_host].nextRoundNumber;
-    require(nextRoundNumber > 0, 'Host has not created any round yet');
-    Round storage round = rounds[_host][_roundId];
-    require(round.status != Status.UNDEFINED, 'Round does not exist');
-
+    Round storage r = getRound(_host, _roundId);
     return (
-      nextRoundNumber-1,
-      uint8(round.status),
-      round.config.createdAt,
-      round.config.timeoutAt,
-      round.question,
-      round.outcomes.numOutcomes,
-      round.stats.numBets,
-      round.stats.poolSize,
-      round.config.hostBonus
+      r.roundNumber,
+      uint8(r.status),
+      r.createdAt,
+      r.timeoutAt,
+      r.question,
+      r.outcomes.outcomes.length,
+      r.stats.numBets,
+      r.stats.poolSize,
+      r.hostBonus,
+      r.hostFee
     );
   }
 
   function getRoundOutcomes(bytes32 _hostName, bytes4 _roundId) external view returns (bytes32[]) {
-    require(hostAddresses[_hostName] != address(0), 'Host does not exist');
+    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
     return getRoundOutcomes(hostAddresses[_hostName], _roundId);
   }
   
@@ -279,133 +418,22 @@ contract Betl is Ownable {
       hc.totalPoolSize
     );
   }
-  // function addOutcomeForRound (address _host, bytes4 _roundId, bytes32 _outcome) external {
-  //   //additional check needed to make sure that round exists?
-  //   //require(rounds[_host][_roundId] != 0); // not 0x0, there must be a Round
-  //   require(rounds[_host][_roundId].outcomes.hasFlexOutcomes == true);
-  //   require(rounds[_host][_roundId].status == Status.OPEN);
-  //   require(rounds[_host][_roundId].outcomes.outcomeLookup[_outcome] == false); // outcome doesn't exist yet
-    
-  //   rounds[_host][_roundId].outcomes.outcomes.push(_outcome);
-  //   rounds[_host][_roundId].outcomes.outcomeLookup[_outcome] = true;
-  //   rounds[_host][_roundId].outcomes.numOutcomes += 1;
-  // }
-
-  // always takes newest rounds.
-  function pickWinnerAndEnd (uint[] _winners, bytes4 _roundId) external payable {
-    Round storage r = getRound(msg.sender, _roundId);
-    require(r.status == Status.OPEN || r.status == Status.CLOSED);
-
-    require(_winners.length <= rounds[msg.sender][_roundId].outcomes.numOutcomes);
-    require(now < rounds[msg.sender][_roundId].config.timeoutAt); // --> cancelInternal when timeoutAt reached? Nahh. move to Closed?
-    
-
-    // TODO: redistribute payouts
-    //owner.transfer(1%)
-    //host.transfer(hostShare)
-    // payouts = remaining pool
-
-
-    hostContext[msg.sender].totalNumBets += rounds[msg.sender][_roundId].stats.numBets;
-    hostContext[msg.sender].totalPoolSize += (rounds[msg.sender][_roundId].stats.poolSize + msg.value);
-    hostContext[msg.sender].numRoundsSuccess += 1;
-    rounds[msg.sender][_roundId].status == Status.FINISHED;
-    emit RoundFinished(msg.sender, _roundId);
-  }
-
-  function bet(address _host, bytes4 _roundId, bytes32 _outcomeId) external payable {
-    Round storage r = getRound(_host, _roundId);
-    require(r.status == Status.OPEN);
-
-    require(msg.value >= rr.config.minBet);
-    require(r.outcomes.outcomeLookup[_outcomeId] == true);
-    require(now < r.config.timeoutAt);
-  
-    r.playerBets[_outcomeId][msg.sender] += msg.value;
-    r.outcomePools[_outcomeId] += msg.value;
-    r.outcomeNumBets[_outcomeId] += 1;
-    r.stats.numBets += 1;
-    r.stats.poolSize += msg.value;
-  }
-
-  function claimPayout(address _host, bytes4 _roundId) external {
-    Round storage r = getRound(_host, _roundId);
-    require(r.status == Status.FINISHED);
-    
-    uint myPayout;
-
-    for(uint i=0; i<r.outcomes.outcomes.length; i++) {
-      bytes32 outcome = keccak256(abi.encodePacked(r.outcomes.outcomes[i]));
-      uint outcomeShare = r.results.outcomeWinShares[outcome];
-
-      if (outcomeShare == 0) {
-        continue;
-      }
-   
-      uint myOutcomePayout = getMyPayoutForOutcome(
-          r.playerBets[outcome][msg.sender],
-          outcomeShare,
-          r.outcomePools[outcome],
-          r.stats.poolSize
-      );
-
-      if (myOutcomePayout > 0) {
-        myPayout = myPayout.add(myOutcomePayout);
-
-        // Reset player bets so that they can't be claimed again
-        r.playerBets[outcome][msg.sender] = 0;
-      }
-
-      // Optimization that skips iterations in case an outcome got picked as only
-      // winner (outcomeShare == 100 (%)) which is expeceted to be often the case
-      if (outcomeShare == 100) {
-        break;
-      }
-    }
-
-    require(myPayout > 0);
-    msg.sender.transfer(myPayout);
-  }
-
-  function getMyPayoutForOutcome(uint _myBet, uint _outcomeShare, uint _outcomePool, uint _roundPool) pure private returns (uint) {
-    if (_myBet > 0) {
-      uint myOutcomeShare = (_myBet*1e20).div(_outcomePool);
-
-      uint myOutcomePayout = _roundPool
-          .mul(_outcomeShare)
-          .div(100)
-          .mul(myOutcomeShare)
-          .div(1e20);
-
-      return myOutcomePayout;
-    }
-    return 0;
-  }
-
-  function cancelRound(bytes4 _roundId) external {
-    Round storage r = getRound(msg.sender, _roundId);
-    require(r.status == Status.SCHEDULED || r.status == Status.OPEN)
-
-    rounds[msg.sender][_roundId].status = Status.CANCELLED;
-    hostContext[msg.sender].numRoundsCancelled += 1;
-    emit RoundCanceled(msg.sender, _roundId);
-  }
 
 
   ///
-  /// Management of `Username <-> address` mappings
+  /// Management of `Username <-> address` mapping
   ///
 
   function registerRecord(bytes32 _name)
     public
   {
     require(hostAddresses[_name] == address(0));
-    require(hostNames[msg.sender] == 0x0000000000000000);
+    require(hostNames[msg.sender] == bytes32(0));
 
     _setRecord(msg.sender, _name);
   }
 
-  function deleteRecord ()
+  function deleteRecord()
     public
   {
     bytes32 oldName = hostNames[msg.sender];
@@ -414,14 +442,14 @@ contract Betl is Ownable {
     _removeRecord(msg.sender, oldName);
   }
 
-  function updateRecord (bytes32 _newName)
+  function updateRecord(bytes32 _newName)
     external
   {
     deleteRecord();
     registerRecord(_newName);
   }
 
-  function sudoDeleteRecord (bytes32 _name)
+  function sudoDeleteRecord(bytes32 _name)
     external
     onlyOwner
   {
@@ -431,7 +459,7 @@ contract Betl is Ownable {
     _removeRecord(affectedAddress, _name);
   }
 
-  function _setRecord (
+  function _setRecord(
     address _address,
     bytes32 _name
   )
@@ -441,7 +469,7 @@ contract Betl is Ownable {
     hostNames[_address] = _name;
   }
 
-  function _removeRecord (
+  function _removeRecord(
     address _address,
     bytes32 _name
   )
