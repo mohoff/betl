@@ -406,57 +406,40 @@ const OptionNumberInput = ({ min, max, step, placeholder, unit, onChange, value 
   )
 }
 
-class RoundCreated extends Component {
-  constructor(props) {
-    super(props)
-    this.roundPath = '/' + props.hostId + '/' + props.roundId
-    this.roundURL = process.env.REACT_APP_DOMAIN + this.roundPath
-  }
+const RoundLink = ({ url, domain, roundId }) => {
+  return (
+    <div className="has-text-centered is-large">
+      <Link to={url}>
+        <span className="monotype">
+          {domain}
+            <span className="has-text-grey">...</span>/
+            <b>{roundId}</b>
+        </span>
+      </Link>
+    </div>
+  )
+}
 
-  copyToClipboard = () => {
+const ButtonCopyToClipboard = ({ text }) => {
+  const copyToClipboard = () => {
     const tmp = document.createElement('textarea')
-    tmp.value = this.roundURL
+    tmp.value = text
     document.body.appendChild(tmp)
     tmp.select()
     document.execCommand('copy')
     document.body.removeChild(tmp)
   }
 
-  render = () => {
-    return (
-      <div className="message is-primary">
-        <div className="message-header">
-          Success!
-        </div>
-        <div className="message-body field is-grouped is-fullwidth">  
-          <div className="control is-expanded">
-            Invite your community with this link:<br />
-            <br />
-
-            <div className="has-text-centered is-large">
-              <Link to={this.roundPath}>
-                <span className="monotype">
-                  betl.github.io/
-                    <span className="has-text-grey">...</span>/
-                    <b>{this.props.roundId}</b>
-                </span>
-              </Link>
-            </div>
-
-            <div className="has-text-centered copy-button">
-              <a className="button is-large is-primary is-outlined"
-                  onClick={this.copyToClipboard}>
-                <span className="icon">
-                  <i className="fas fa-copy"></i>
-                </span>
-              </a>
-            </div>
-
-          </div>
-        </div>
-      </div>
-    )
-  }
+  return (
+    <div className="has-text-centered copy-button">
+      <a className="button is-large is-primary is-outlined"
+          onClick={copyToClipboard}>
+        <span className="icon">
+          <i className="fas fa-copy"></i>
+        </span>
+      </a>
+    </div>
+  )
 }
 
 // Wrap with React context consumer to provide web3 context
