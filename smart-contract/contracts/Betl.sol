@@ -436,7 +436,7 @@ contract Betl is Ownable {
     return getRoundOutcomePool(hostAddresses[_hostName], _roundId, _outcomeHash);
   }
   
-  function getRoundOutcomePool(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view roundExists(_host, _roundId) returns (uint) {
+  function getRoundOutcomePool(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
     return rounds[_host][_roundId].outcomePools[_outcomeHash];
   }
 
@@ -445,25 +445,25 @@ contract Betl is Ownable {
     return getRoundOutcomeNumBets(hostAddresses[_hostName], _roundId, _outcomeHash);
   }
   
-  function getRoundOutcomeNumBets(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view roundExists(_host, _roundId) returns (uint) {
+  function getRoundOutcomeNumBets(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
     return rounds[_host][_roundId].outcomeNumBets[_outcomeHash];
   }
 
-  function getMyRoundOutcomeBet (bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+  function getMyRoundOutcomeBet(bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
     require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
     return getMyRoundOutcomeBet(hostAddresses[_hostName], _roundId, _outcomeHash);
   }
   
-  function getMyRoundOutcomeBet (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view roundExists(_host, _roundId) returns (uint) {
+  function getMyRoundOutcomeBet(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
     return rounds[_host][_roundId].playerBets[_outcomeHash][msg.sender];
   }
 
-  function getRoundOutcomeWinShare (bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+  function getRoundOutcomeWinShare(bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
     require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
     return getRoundOutcomeWinShare(hostAddresses[_hostName], _roundId, _outcomeHash);
   }
   
-  function getRoundOutcomeWinShare (address _host, bytes4 _roundId, bytes32 _outcomeHash) public view roundExists(_host, _roundId) returns (uint) {
+  function getRoundOutcomeWinShare(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
     return rounds[_host][_roundId].results.outcomeWinShares[_outcomeHash];
   }
 

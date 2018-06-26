@@ -25,15 +25,26 @@ class HostRound extends Component {
       hostFee: 0,
       outcomes: [],
       outcomesBetPool: [],
-      outcomesBetNum: []
+      outcomesBetNum: [],
+      outcomesMyBet: [],
+      outcomesWinShare: [],
     }
   }
 
   componentDidMount = async () => {
     //this.getRoundBasic()
     //this.getRoundExtended()
-    this.getRoundInfo()
-    this.getRoundOutcomes()
+    const status = await this.getRoundInfo()
+    if (this.isValidRound(status)) {
+      await this.getRoundOutcomes()
+      this.getRoundOutcomePools()
+      this.getRoundOutcomeNumBets()
+      this.getMyRoundOutcomeBet()
+      this.getRoundOutcomeWinShare()
+    } else {
+      // TODO: rework this so this error is reflected in the UI properly
+      throw new Error('Fetched round is not valid')
+    }
     
     // Try to fetch basic round data.
     // If round exists, fetch full round data
@@ -46,64 +57,7 @@ class HostRound extends Component {
     //   this.setState({ status: 0 })
     //   console.log('Error: Round is invalid')
     // })
-  }
-
-  getRoundBasic = async () => {
-    return new Promise((resolve, reject) => {
-      this.props.betl.getRoundBasic(this.state.hostId, this.state.roundId).then(r => {
-        let [roundNumber, status, createdAt, timeoutAt, question] = r
-        //if (Number(status) === 0) reject()
-
-        console.log('Success: getRoundBasic (id: ' + this.state.roundId + ')')
-        console.log(JSON.stringify(r))
-        // this.setState({
-        //   roundNumber: Number(roundNumber),
-        //   status: Number(status),
-        //   createdAt: Number(createdAt),
-        //   timeoutAt: Number(timeoutAt),
-        //   question: this.props.web3.utils.hexToUtf8(question)
-        // })
-        resolve()
-      }).catch(err => {
-        console.log(err)
-        reject()
-      })
-    })
-  }
-
-  getRoundExtended = async () => {
-    return new Promise((resolve, reject) => {
-      this.props.betl.getRoundExtended(this.state.hostId, this.state.roundId).then(r => {
-        console.log('Success: getRoundExtended (id: ' + this.state.roundId + ')')
-        console.log(JSON.stringify(r))
-        resolve()
-      }).catch(err => {
-        console.log(err)
-        reject()
-      })
-      // this.props.betl.getRoundInfo(this.state.hostId, this.state.roundId).then(r => {
-      //   let [roundNumber, status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee] = r
-      //   if (Number(status) === 0) reject()
-
-      //   console.log('Success: getRound (id: ' + this.state.roundId + ')')
-
-      //   this.setState({
-      //     roundNumber: Number(roundNumber),
-      //     status: Number(status),
-      //     createdAt: Number(createdAt),
-      //     timeoutAt: Number(timeoutAt),
-      //     question: this.props.web3.utils.hexToUtf8(question),
-      //     numOutcomes: Number(numOutcomes),
-      //     numBets: Number(numBets),
-      //     poolSize: Number(poolSize),
-      //     hostBonus: Number(hostBonus),
-      //     hostFee: Number(hostFee),
-      //   })
-      //   resolve()
-      // }).catch(err => {
-      //   reject()
-      // })
-    })
+  
   }
 
   getRoundInfo = async () => {
@@ -114,42 +68,120 @@ class HostRound extends Component {
 
         console.log('Success: getRound (id: ' + this.state.roundId + ')')
         console.log(JSON.stringify(r))
-        // this.setState({
-        //   roundNumber: Number(roundNumber),
-        //   status: Number(status),
-        //   createdAt: Number(createdAt),
-        //   timeoutAt: Number(timeoutAt),
-        //   question: this.props.web3.utils.hexToUtf8(question),
-        //   numOutcomes: Number(numOutcomes),
-        //   numBets: Number(numBets),
-        //   poolSize: Number(poolSize),
-        //   hostBonus: Number(hostBonus),
-        //   hostFee: Number(hostFee),
-        // })
-        resolve()
+        this.setState({
+          roundNumber: Number(roundNumber),
+          status: Number(status),
+          createdAt: Number(createdAt),
+          timeoutAt: Number(timeoutAt),
+          question: this.props.web3.utils.hexToUtf8(question),
+          numOutcomes: Number(numOutcomes),
+          numBets: Number(numBets),
+          poolSize: Number(poolSize),
+          hostBonus: Number(hostBonus),
+          hostFee: Number(hostFee),
+        })
+        resolve(Number(status))
       }).catch(err => {
         reject()
       })
     })
   }
 
+  isValidRound = (status) => {
+    return status < 7
+  }
+
   getRoundOutcomes = async () => {
-    this.props.betl.getRoundOutcome(this.state.hostId, this.state.roundId, 0).then(r => {
-      console.log('getRoundCoutcomes')
-      console.log(r)
+    let promises = Array(this.state.numOutcomes).fill().map((_, i) => {
+      return new Promise((resolve, reject) => {
+        this.props.betl.getRoundOutcome(
+          this.state.hostId,
+          this.state.roundId,
+          i
+        ).then(r => {
+          resolve(this.props.web3.utils.hexToUtf8(r))
+        })
+      })
     })
-    this.props.betl.getRoundOutcome(this.state.hostId, this.state.roundId, 1).then(r => {
-      console.log('getRoundCoutcomes')
-      console.log(r)
-    })
+    const outcomes = await Promise.all(promises)
+    this.setState({ outcomes: outcomes })
+  }
+
+  getOutcomeId = (outcome) => {
+    return this.props.web3.utils.sha3(outcome)
   }
 
   getRoundOutcomePools = async () => {
-   // TODO: implement 
+    let promises = Array(this.state.numOutcomes).fill().map((_, i) => {
+      const outcomeId = this.getOutcomeId(this.state.outcomes[i])
+      return new Promise((resolve, reject) => {
+        this.props.betl.getRoundOutcomePool(
+          this.state.hostId,
+          this.state.roundId,
+          outcomeId
+        ).then(wei => {
+          const ether = this.props.web3.utils.fromWei(String(wei))
+          resolve(ether)
+        })
+      })
+    })
+    const outcomePools = await Promise.all(promises)
+    this.setState({ outcomesBetPool: outcomePools })
   }
 
   getRoundOutcomeNumBets = async () => {
-    // TODO: implement
+    let promises = Array(this.state.numOutcomes).fill().map((_, i) => {
+      const outcomeId = this.getOutcomeId(this.state.outcomes[i])
+      return new Promise((resolve, reject) => {
+        this.props.betl.getRoundOutcomeNumBets(
+          this.state.hostId,
+          this.state.roundId,
+          outcomeId
+        ).then(r => {
+          resolve(Number(r))
+        })
+      })
+    })
+    const outcomeNumBets = await Promise.all(promises)
+    this.setState({ outcomesBetNum: outcomeNumBets })
+  }
+
+  // FIX: it's broken. returns corrupted data
+  getMyRoundOutcomeBet = async () => {
+    let promises = Array(this.state.numOutcomes).fill().map((_, i) => {
+      const outcomeId = this.getOutcomeId(this.state.outcomes[i])
+      return new Promise((resolve, reject) => {
+        this.props.betl.getMyRoundOutcomeBet(
+          this.state.hostId,
+          this.state.roundId,
+          outcomeId
+        ).then(wei => {
+          console.log(Number(wei))
+          //const ether = this.props.web3.utils.fromWei(String(wei))
+          //resolve(ether)
+        })
+      })
+    })
+    const outcomesMyBet = await Promise.all(promises)
+    this.setState({ outcomesMyBet: outcomesMyBet })
+    console.log(this.state)
+  }
+
+  getRoundOutcomeWinShare = async () => {
+    let promises = Array(this.state.numOutcomes).fill().map((_, i) => {
+      const outcomeId = this.getOutcomeId(this.state.outcomes[i])
+      return new Promise((resolve, reject) => {
+        this.props.betl.getRoundOutcomeWinShare(
+          this.state.hostId,
+          this.state.roundId,
+          outcomeId
+        ).then(winShare => {
+          resolve(Number(winShare))
+        })
+      })
+    })
+    const outcomesWinShare = await Promise.all(promises)
+    this.setState({ outcomesWinShare: outcomesWinShare })
   }
 
   getHostInfo = async (hostId) => {

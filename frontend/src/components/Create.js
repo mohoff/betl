@@ -121,13 +121,7 @@ class Create extends Component {
       this.props.getOptions()
     ).then(async (r) => {
       console.log('Success: createRound: expected round id: ' + this.state.nextRoundId)
-      const roundBasic = await this.props.betl.getRoundBasic(this.props.userAddress, this.state.nextRoundId)
-      console.log('roundBasics: ' + roundBasic)
-      if (roundBasic[0] !== 0) {
-        this.setState({ createdRoundId: this.state.nextRoundId })
-      } else {
-        console.error('Something went wrong while creating the round. Expected non-zero roundId but got: ' + roundBasic[0])
-      }
+      this.setState({ createdRoundId: this.state.nextRoundId })
     }).catch(err => {
       console.log('Error')
       console.error(err)
