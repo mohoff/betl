@@ -90,12 +90,16 @@ contract Betl is Ownable {
   mapping(address => bytes32) public hostNames;
 
   modifier roundExists(address _host, bytes4 _roundId) {
-    require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
+    //require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
     _;
   }
 
   function getRound(address _host, bytes4 _roundId) private view returns (Round storage) {
-    return rounds[_host][_roundId];
+    Round storage r = rounds[_host][_roundId];
+    // verify existance of round
+    Status status = r.status;
+    require(uint(status) < 7);
+    return r;
   }
 
   // function getRoundId(address _host) public view returns (bytes4) {
@@ -339,13 +343,69 @@ contract Betl is Ownable {
   /// Getters used by UI
   ///
 
-  function getRoundInfo(bytes32 _hostName, bytes4 _roundId) 
-    external
-    view // roundNumber, status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee
-    returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint, uint)
+  // I have no idea why but function ordering important here. If getRoundInfo is placed before getRoundOutcome,
+  // web3 calls to getRoundInfo will return corrupted data
+  function getRoundOutcome(bytes32 _hostName, bytes4 _roundId, uint _index) external view returns (bytes32) {
+    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
+    return getRoundOutcome(hostAddresses[_hostName], _roundId, _index);
+  }
+  
+  function getRoundOutcome(address _host, bytes4 _roundId, uint _index) public view roundExists(_host, _roundId) returns (bytes32) {
+    Round storage r = getRound(_host, _roundId);
+    require(_index < r.outcomes.outcomes.length);
+    return r.outcomes.outcomes[_index];
+  }
+
+  // function getRoundInfo(bytes32 _hostName, bytes4 _roundId) 
+  //   external
+  //   view // roundNumber, status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee
+  //   returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint, uint)
+  // {
+  //   require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
+  //   return getRoundInfo(hostAddresses[_hostName], _roundId);
+  // }
+
+  function getRoundExtended(bytes32 _hostName, bytes4 _roundId) external view
+    returns (uint256, uint256, uint256)
   {
     require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getRoundInfo(hostAddresses[_hostName], _roundId);
+    return getRoundExtended(hostAddresses[_hostName], _roundId);
+  }
+
+  function getRoundExtended(address _host, bytes4 _roundId) public view
+    // roundNumber, numBets, poolSize, hostBonus, hostFee
+    returns (uint256, uint256, uint256)
+  {
+    Round storage r = getRound(_host, _roundId);
+    return (
+      r.hostBonus,
+      r.hostFee,
+      r.stats.numBets//,
+      //r.stats.poolSize,
+      //r.roundNumber
+    );
+  }
+
+
+  function getRoundBasic(bytes32 _hostName, bytes4 _roundId) external view
+    returns (uint, bytes32, uint, uint, uint)
+  {
+    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
+    return getRoundBasic(hostAddresses[_hostName], _roundId);
+  }
+
+  function getRoundBasic(address _host, bytes4 _roundId) public view
+    // status, question, numOutcomes, createdAt, timeoutAt
+    returns (uint, bytes32, uint, uint, uint)
+  {
+    Round storage r = getRound(_host, _roundId);
+    return (
+      uint256(r.status),
+      r.question,
+      r.outcomes.outcomes.length,
+      r.createdAt,
+      r.timeoutAt
+    );
   }
 
   function getRoundInfo(address _host, bytes4 _roundId)
@@ -356,9 +416,10 @@ contract Betl is Ownable {
     returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint, uint)
   {
     Round storage r = getRound(_host, _roundId);
+   
     return (
       r.roundNumber,
-      uint8(r.status),
+      uint256(r.status),
       r.createdAt,
       r.timeoutAt,
       r.question,
@@ -368,15 +429,6 @@ contract Betl is Ownable {
       r.hostBonus,
       r.hostFee
     );
-  }
-
-  function getRoundOutcomes(bytes32 _hostName, bytes4 _roundId) external view returns (bytes32[]) {
-    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getRoundOutcomes(hostAddresses[_hostName], _roundId);
-  }
-  
-  function getRoundOutcomes(address _host, bytes4 _roundId) public view roundExists(_host, _roundId) returns (bytes32[]) {
-    return rounds[_host][_roundId].outcomes.outcomes;
   }
 
   function getRoundOutcomePool(bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
