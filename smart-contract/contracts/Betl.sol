@@ -107,7 +107,8 @@ contract Betl is Ownable {
 
   // Frontend needs to fetch roundId of created round.
   function getNextRoundId(address _host) public view returns (bytes4) {
-    bytes32 hash = keccak256(abi.encodePacked(_host, hostContext[_host].nextRoundNumber));
+    uint nrn = hostContext[_host].nextRoundNumber;
+    bytes32 hash = keccak256(abi.encodePacked(_host, nrn));
     return bytes4(hash);
   }
 

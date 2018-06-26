@@ -406,6 +406,37 @@ const OptionNumberInput = ({ min, max, step, placeholder, unit, onChange, value 
   )
 }
 
+class RoundCreated extends Component {
+  constructor(props) {
+    super(props)
+    this.roundPath = '/' + props.hostId + '/' + props.roundId
+    this.roundURL = process.env.REACT_APP_DOMAIN + this.roundPath
+  }
+
+  render = () => {
+    return (
+      <div className="message is-primary">
+        <div className="message-header">
+          Success!
+        </div>
+        <div className="message-body field is-grouped is-fullwidth">  
+          <div className="control is-expanded">
+            Invite your community with this link:<br />
+            <br />
+
+            <RoundLink
+              url={this.roundPath}
+              domain={process.env.REACT_APP_DOMAIN}
+              roundId={this.props.roundId}
+            />
+            <ButtonCopyToClipboard text={this.roundURL} />
+          </div>
+        </div>
+      </div>
+    )
+  }
+}
+
 const RoundLink = ({ url, domain, roundId }) => {
   return (
     <div className="has-text-centered is-large">

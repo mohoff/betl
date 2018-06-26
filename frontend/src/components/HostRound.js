@@ -31,6 +31,7 @@ class HostRound extends Component {
     // Try to fetch basic round data.
     // If round exists, fetch full round data
     this.getRound().then(() => {
+      console.log(this.state)
       this.getRoundOutcomes()
       this.getRoundOutcomePools()
       this.getRoundOutcomeNumBets()
@@ -42,7 +43,7 @@ class HostRound extends Component {
 
   getRound = async () => {
     return new Promise((resolve, reject) => {
-      this.props.betl.getRound(this.state.hostId, this.state.roundId).then(r => {
+      this.props.betl.getRoundInfo(this.state.hostId, this.state.roundId).then(r => {
         let [roundNumber, status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize] = r
         if (Number(status) === 0) reject()
 
