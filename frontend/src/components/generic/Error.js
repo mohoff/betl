@@ -2,35 +2,46 @@ import React from 'react'
 
 export const MetamaskNotAvailable = () => {
   return (
-    <MetamaskError>
-      Please install Metamask browser plugin
-    </MetamaskError>
+    <ErrorMessage subject="Metamask not installed!">
+      Please install Metamask browser plugin to proceed
+    </ErrorMessage>
   )
 }
 
 export const MetamaskNotLoggedIn = () => {
   return (
-    <MetamaskError>
+    <ErrorMessage subject="Not logged in!">
       Please log in Metamask browser plugin
-    </MetamaskError>
+    </ErrorMessage>
   )
 }
 
 export const MetamaskWrongNetwork = ({ target, current }) => {
   return (
-    <MetamaskError>
-      Please select the {target} network! 
+    <ErrorMessage subject="Wrong network!">
+      Please select the {target} network!
       Currently you're on the {current} network.
-    </MetamaskError>
+    </ErrorMessage>
   )
 }
 
-const MetamaskError = ({ children }) => {
+export const RoundNotFound = () => {
+  return <ErrorMessage subject="Invalid Bet!">Round not found</ErrorMessage>
+}
+
+const ErrorMessage = ({ subject, children }) => {
   return (
     <div className="is-fullwidth">
-      <p className="is-italic has-text-danger has-text-centered">
-        {children}
-      </p>
+      <div className="message is-danger">
+        <div className="message-header">
+          {subject}
+        </div>
+        <div className="message-body field is-fullwidth">  
+          <p className="is-italic has-text-centered is-size-5">
+            {children}
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

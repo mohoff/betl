@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 import { Link } from 'react-router-dom'
 import { Web3Context } from './Web3Wrapper'
 import Utils from '../utils/utils.js'
-import './Create.sass'
+import './Create.css'
 import {
   InputText,
   InputNumber,
@@ -10,7 +10,7 @@ import {
   Button,
   ButtonPrimary,
   WelcomeHost
-} from '../generic'
+} from './generic'
 
 class Create extends Component {
   constructor(props) {
@@ -436,7 +436,7 @@ const RoundLink = ({ url, domain, roundId }) => {
     <div className="has-text-centered is-large">
       <Link to={url}>
         <span className="monotype">
-          {domain}
+          {domain}/
             <span className="has-text-grey">...</span>/
             <b>{roundId}</b>
         </span>

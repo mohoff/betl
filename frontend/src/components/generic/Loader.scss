@@ -1,0 +1,26 @@
+@import '../../main.scss';
+
+@mixin loader {
+  animation: spinAround 700ms infinite linear;
+  border-color: $primary;
+  border-style: solid;
+  border-radius: $radius-rounded;
+  border-right-color: transparent;
+  border-top-color: transparent;
+  content: "";
+  display: block;
+  position: relative;
+}
+
+.loader-large {
+  @include loader
+  border-width: 6px;
+  margin: auto;
+  height: 4em;
+  width: 4em;
+}
+
+.container-large {
+  margin-top: 150px;
+  margin-bottom: 50px;
+}

@@ -1,15 +1,6 @@
 @import 'bulma/sass/utilities/initial-variables.sass';
 @import 'bulma/sass/utilities/functions.sass';
 
-@font-face {
-  font-family: 'KarmaticArcade';
-  src: url('./fonts/karmatic_arcade/ka1.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-}
-
-
-
 
 $primary: rgb(175, 49, 95);
 $grey-lighter: #444;
@@ -92,4 +83,4 @@ span {
     }
 }
 
-
+@import './components/sections/Header.scss';

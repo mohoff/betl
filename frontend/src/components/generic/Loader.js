@@ -1,31 +1,36 @@
 import React from 'react'
-import './Loader.sass'
-
+import './Loader.scss'
 
 
 export const LoadingMetamask = () => {
   return <LoadingFullwidth>Detecting Metamask...</LoadingFullwidth>
 }
 
+export const LoadingRound = () => {
+  return <LoadingFullwidth>Loading Bet...</LoadingFullwidth>
+}
+
 export const LoadingFullwidth = ({ children }) => {
   return (
     <div className="is-fullwidth">
-      <Loading className="loader-page">
-        {children}
-      </Loading>
+      <SpinnerLarge />
+      <LoadingText>{children}</LoadingText>
     </div>
   )
 }
 
-const Loading = ({ className, children }) => {
+const LoadingText = ({ children }) => {
   return (
-    <div>
-      <span className={className}></span>
-      {children && 
-        <p className="is-italic has-text-centered">
-          {children}
-        </p>
-      }
+    <p className="is-italic has-text-centered is-size-5">
+      {children}
+    </p>
+  )
+}
+
+const SpinnerLarge = () => {
+  return (
+    <div className="container-large">
+      <span className="loader-large is-large"></span>
     </div>
   )
 }

@@ -22,10 +22,10 @@ class App extends Component {
   render = () => {
     return (
       <div>
-        <Web3Wrapper>
-          <BrowserRouter>
-            <div>
-              <Header />           
+        <BrowserRouter>
+          <div>
+            <Header />  
+            <Web3Wrapper>         
               <Switch>
                 <Route exact path="/"
                   component={Home}/>
@@ -39,10 +39,10 @@ class App extends Component {
                   render={Host}/>
                 <Route component={NotFound} />
               </Switch>
-              <Footer />
-            </div>
-          </BrowserRouter>
-        </Web3Wrapper>
+            </Web3Wrapper>
+            <Footer />
+          </div>
+        </BrowserRouter>
       </div>
     )
   }

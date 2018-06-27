@@ -1,7 +1,11 @@
 import React, { Component } from 'react'
+
 import { Web3Context } from './Web3Wrapper'
 import BetState from './BetState'
-
+import {
+  LoadingRound,
+  RoundNotFound
+} from './generic'
 
 class HostRound extends Component {
   constructor(props) {
@@ -10,6 +14,7 @@ class HostRound extends Component {
       hostId: props.match.params.hostId.toLowerCase(),
       // contract expects byte parameters to be prefixed with '0x'
       roundId: '0x' + props.match.params.roundId.toLowerCase(),
+
       roundNumber: 0,
       status: null,
       createdAt: 0,
@@ -183,10 +188,10 @@ class HostRound extends Component {
   }
   
   render() {
-    if (true || this.state.status == null) {
-      return <RoundLoading />
+    if (this.state.status === null) {
+      return <LoadingRound />
     }
-    if (this.state.status == 0) {
+    if (this.state.status === 0) {
       return <RoundNotFound />
     }
     return (
@@ -197,22 +202,6 @@ class HostRound extends Component {
       </div>
     );
   }
-}
-
-const RoundLoading = () => {
-  return (
-    <div className="is-fullwidth">
-      <span className="loader"></span>
-    </div>
-  )
-}
-
-const RoundNotFound = () => {
-  return (
-    <div className="is-fullwidth has-text-centered">
-      Round not found
-    </div>
-  )
 }
 
 // Wrap with React context consumer to provide web3 context

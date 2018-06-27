@@ -7,7 +7,7 @@ import {
   ButtonDelete,
   InputText,
   WelcomeHost
-} from '../generic'
+} from './generic'
 
 class Host extends Component {
 
