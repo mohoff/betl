@@ -455,7 +455,8 @@ contract Betl is Ownable {
   }
   
   function getMyRoundOutcomeBet(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
-    return rounds[_host][_roundId].playerBets[_outcomeHash][msg.sender];
+    Round storage r = getRound(_host, _roundId);
+    return r.playerBets[_outcomeHash][msg.sender];
   }
 
   function getRoundOutcomeWinShare(bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
