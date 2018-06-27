@@ -1,10 +1,14 @@
 import React, { Component } from 'react'
-import { MetaMaskNotAvailable, MetaMaskWrongNetwork, MetaMaskNotLoggedIn } from './MetaMaskErrors'
-import MetaMaskLoading from './MetaMaskLoading'
 import Web3 from 'web3'
 import TruffleContract from 'truffle-contract'
 
-const POLLING_INTERVAL_MS = 500
+import {
+  MetamaskNotAvailable,
+  MetamaskWrongNetwork,
+  MetamaskNotLoggedIn,
+  LoadingMetamask
+} from './generic'
+
 export const Web3Context = React.createContext();
 
 class Web3Wrapper extends Component {
@@ -34,7 +38,7 @@ class Web3Wrapper extends Component {
   componentWillMount = async () => {
     await this.initWeb3()
     this.initBetl()
-    this.startPollingMetaMaskStatus()
+    this.startPollingMetamaskStatus()
   }
 
   componentDidMount = () => {
@@ -65,7 +69,7 @@ class Web3Wrapper extends Component {
         })
         resolve()
       } else {
-        console.warn('No Web3 provider detected. Is MetaMask browser installed?')
+        console.warn('No Web3 provider detected. Is Metamask browser installed?')
         reject()
       }
     })
@@ -86,13 +90,16 @@ class Web3Wrapper extends Component {
     })
   }
 
-  startPollingMetaMaskStatus = () => {
+  startPollingMetamaskStatus = () => {
     if (!this.pollingInterval) {
-      this.pollingInterval = setInterval(this.updateMetaMaskStatus, POLLING_INTERVAL_MS);
+      this.pollingInterval = setInterval(
+        this.updateMetamaskStatus,
+        process.env.REACT_APP_METAMASK_POLLING_INTERVAL_MS
+      )
     }
   }
 
-  updateMetaMaskStatus = () => {
+  updateMetamaskStatus = () => {
     this.updateUserAddress()
     this.updateCurrentNetwork()
   }
@@ -177,22 +184,25 @@ class Web3Wrapper extends Component {
     })
   }
 
-  isInitialMetaMaskCheckDone = () => {
+  isInitialMetamaskCheckDone = () => {
     return this.state.web3 !== null && this.state.userAddress !== null &&  this.state.currentNetwork !== null
   }
 
   render = () => {
-    if (this.isInitialMetaMaskCheckDone()) {
+    if (this.isInitialMetamaskCheckDone()) {
       if (this.state.web3 === '') {
-        return ( <MetaMaskNotAvailable /> )
+        return <MetamaskNotAvailable />
       }
       if (this.state.userAddress === '') {
-        return ( <MetaMaskNotLoggedIn /> )
+        return <MetamaskNotLoggedIn />
       }
       if (this.state.currentNetwork === '' || this.state.currentNetwork !== this.state.targetNetwork) {
-        return ( <MetaMaskWrongNetwork
-                    target={this.state.targetNetwork}
-                    current={this.state.currentNetwork} /> )
+        return (
+          <MetamaskWrongNetwork
+            target={this.state.targetNetwork}
+            current={this.state.currentNetwork}
+          />
+        )
       }
 
       const context = {
@@ -215,7 +225,7 @@ class Web3Wrapper extends Component {
         </Web3Context.Provider>
       )
     } else {
-      return ( <MetaMaskLoading />)
+      return <LoadingMetamask />
     }
   }
 

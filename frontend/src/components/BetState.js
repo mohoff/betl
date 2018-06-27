@@ -1,9 +1,14 @@
 import React, { Component } from 'react'
-import { Web3Context } from './generic/Web3Wrapper'
-import BetOptions from './BetOptions'
+
+import { Web3Context } from './Web3Wrapper'
+import BetOutcomes from './BetOutcomes'
+import { ButtonPrimary } from './generic'
 //import './BetState.scss'
 
 class BetState extends Component {
+  constructor(props) {
+    super(props)
+  }
   render() {
     switch(this.props.status) {
       case '':
@@ -40,17 +45,15 @@ const BetStateCancelled = () => {
   return <BetStateInfo>Round is cancelled! Claim your refund now</BetStateInfo>
 }
 const BetStateOpen = (props) => {
-  let options = ['Yes!', 'No', 'Maybe']
+  let outcomes = ['Yes!', 'No', 'Maybe']
   return (
     <div>
       <BetStateInfo>Round is open! Place your bets now</BetStateInfo>
-      <BetOptions options={options} />
+      <BetOutcomes outcomes={outcomes} />
       <div className="control has-text-centered">
-        <button
-          className="button is-large is-primary"
-          onClick={this.handleBet}>
+        <ButtonPrimary onClick={this.handleBet}>
             Bet
-        </button>
+        </ButtonPrimary>
       </div>
     </div>
   )
@@ -66,11 +69,9 @@ const BetStateFinished = () => {
     <div>
       <BetStateInfo>Round is finished! Claim your reward now!</BetStateInfo>
       <div className="control has-text-centered">
-        <button
-          className="button is-large is-primary"
-          onClick={this.handleBet}>
+        <ButtonPrimary onClick={this.handleClaim}>
             Claim reward
-        </button>
+        </ButtonPrimary>
       </div>
     </div>
   )

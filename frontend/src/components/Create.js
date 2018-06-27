@@ -1,8 +1,8 @@
 import React, { Component } from 'react'
 import { Link } from 'react-router-dom'
-import { Web3Context } from './generic/Web3Wrapper'
+import { Web3Context } from './Web3Wrapper'
 import Utils from '../utils/utils.js'
-import './Create.scss'
+import './Create.sass'
 import {
   InputText,
   InputNumber,
@@ -10,7 +10,7 @@ import {
   Button,
   ButtonPrimary,
   WelcomeHost
-} from './generic/Base.js'
+} from '../generic'
 
 class Create extends Component {
   constructor(props) {

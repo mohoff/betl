@@ -1,20 +1,17 @@
 import React, { Component } from 'react'
-import { Web3Context } from './generic/Web3Wrapper'
+import { Web3Context } from './Web3Wrapper'
 import BetState from './BetState'
 
-const ZERO_ADDRESS = '0x00000000000000000000000000000000'
 
 class HostRound extends Component {
-
   constructor(props) {
   	super(props)
     this.state = {
       hostId: props.match.params.hostId.toLowerCase(),
-
       // contract expects byte parameters to be prefixed with '0x'
       roundId: '0x' + props.match.params.roundId.toLowerCase(),
       roundNumber: 0,
-      status: 0,
+      status: null,
       createdAt: 0,
       timeoutAt: 0,
       question: '',
@@ -32,8 +29,6 @@ class HostRound extends Component {
   }
 
   componentDidMount = async () => {
-    //this.getRoundBasic()
-    //this.getRoundExtended()
     const status = await this.getRoundInfo()
     if (this.isValidRound(status)) {
       await this.getRoundOutcomes()
@@ -45,26 +40,13 @@ class HostRound extends Component {
       // TODO: rework this so this error is reflected in the UI properly
       throw new Error('Fetched round is not valid')
     }
-    
-    // Try to fetch basic round data.
-    // If round exists, fetch full round data
-    // this.getRoundBasic().then(() => {
-    //   this.getRoundExtended()
-    //   this.getRoundOutcomes()
-    //   //this.getRoundOutcomePools()
-    //   //this.getRoundOutcomeNumBets()
-    // }).catch(err => {
-    //   this.setState({ status: 0 })
-    //   console.log('Error: Round is invalid')
-    // })
-  
   }
 
   getRoundInfo = async () => {
     return new Promise((resolve, reject) => {
       this.props.betl.getRoundInfo(this.state.hostId, this.state.roundId).then(r => {
         let [roundNumber, status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee] = r
-        //if (Number(status) === 0) reject()
+        if (Number(status) === 0) reject()
 
         console.log('Success: getRound (id: ' + this.state.roundId + ')')
         console.log(JSON.stringify(r))
@@ -201,14 +183,36 @@ class HostRound extends Component {
   }
   
   render() {
+    if (true || this.state.status == null) {
+      return <RoundLoading />
+    }
+    if (this.state.status == 0) {
+      return <RoundNotFound />
+    }
     return (
       <div>       
         
-         
+         round tadaaaa
   
       </div>
     );
   }
+}
+
+const RoundLoading = () => {
+  return (
+    <div className="is-fullwidth">
+      <span className="loader"></span>
+    </div>
+  )
+}
+
+const RoundNotFound = () => {
+  return (
+    <div className="is-fullwidth has-text-centered">
+      Round not found
+    </div>
+  )
 }
 
 // Wrap with React context consumer to provide web3 context
@@ -217,28 +221,3 @@ export default (props) => (
     {context => <HostRound {...props} {...context} />}
   </Web3Context.Consumer>
 )
-
- // {this.state.host.exists && this.state.host.name !== '' &&
- //            <HostInfo name={this.state.host.name}/>
- //          }
-
- //          {this.state.host.exists && this.state.roundExists &&
- //            <div>
- //              <p className="label is-large">
- //                "{this.state.question}"
- //              </p>
- //              <BetState {...this.state} />
- //            </div>
- //          }
-
- //          {!this.state.host.exists && 
- //            <div className="is-italic has-text-centered">
- //              Host not found
- //            </div>
- //          }
-          
- //          {this.state.host.exists && !this.state.roundExists && 
- //            <div className="is-italic has-text-centered">
- //              Round not found
- //            </div>
- //          }

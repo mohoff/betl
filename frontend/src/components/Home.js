@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 import { Link } from 'react-router-dom'
-import './Home.scss'
+import './Home.sass'
 
 class Home extends Component {
   render() {

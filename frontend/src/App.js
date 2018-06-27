@@ -8,7 +8,7 @@ import { hot } from 'react-hot-loader'
 
 import './App.css'
 
-import Web3Wrapper from './components/generic/Web3Wrapper.js'
+import Web3Wrapper from './components/Web3Wrapper.js'
 import Header from './components/sections/Header.js'
 import Footer from './components/sections/Footer.js'
 import Home from './components/Home.js'
@@ -43,7 +43,6 @@ class App extends Component {
             </div>
           </BrowserRouter>
         </Web3Wrapper>
-        
       </div>
     )
   }

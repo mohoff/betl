@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { Web3Context } from './generic/Web3Wrapper'
+import { Web3Context } from './Web3Wrapper'
 import {
   Heading,
   Button,
@@ -7,7 +7,7 @@ import {
   ButtonDelete,
   InputText,
   WelcomeHost
-} from './generic/Base.js'
+} from '../generic'
 
 class Host extends Component {
 
