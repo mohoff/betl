@@ -1,8 +1,10 @@
 import React, { Component } from 'react'
+import Moment from 'moment'
 
 import { Web3Context } from './Web3Wrapper'
 import BetState from './BetState'
 import {
+  HeadingPrimary,
   LoadingRound,
   RoundNotFound
 } from './generic'
@@ -18,6 +20,7 @@ class HostRound extends Component {
       roundNumber: 0,
       status: null,
       createdAt: 0,
+      endedAt: 0,
       timeoutAt: 0,
       question: '',
       numOutcomes: 0,
@@ -37,28 +40,29 @@ class HostRound extends Component {
     const status = await this.getRoundInfo()
     if (this.isValidRound(status)) {
       await this.getRoundOutcomes()
-      this.getRoundOutcomePools()
-      this.getRoundOutcomeNumBets()
-      this.getMyRoundOutcomeBet()
-      this.getRoundOutcomeWinShare()
+      await this.getRoundOutcomePools()
+      await this.getRoundOutcomeNumBets()
+      await this.getMyRoundOutcomeBet()
+      await this.getRoundOutcomeWinShare()
     } else {
       // TODO: rework this so this error is reflected in the UI properly
       throw new Error('Fetched round is not valid')
     }
+    console.log(this.state)
   }
 
   getRoundInfo = async () => {
     return new Promise((resolve, reject) => {
-      this.props.betl.getRoundInfo(this.state.hostId, this.state.roundId).then(r => {
-        let [roundNumber, status, createdAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee] = r
+      this.props.betl && this.props.betl.getRoundInfo(this.state.hostId, this.state.roundId).then(r => {
+        let [roundNumber, status, createdAt, endedAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee] = r
         if (Number(status) === 0) reject()
 
-        console.log('Success: getRound (id: ' + this.state.roundId + ')')
-        console.log(JSON.stringify(r))
+        console.log('Success: getRoundInfo for roundId: ' + this.state.roundId)
         this.setState({
           roundNumber: Number(roundNumber),
           status: Number(status),
           createdAt: Number(createdAt),
+          endedAt: Number(endedAt),
           timeoutAt: Number(timeoutAt),
           question: this.props.web3.utils.hexToUtf8(question),
           numOutcomes: Number(numOutcomes),
@@ -85,8 +89,8 @@ class HostRound extends Component {
           this.state.hostId,
           this.state.roundId,
           i
-        ).then(r => {
-          resolve(this.props.web3.utils.hexToUtf8(r))
+        ).then(outcomeInHex => {
+          resolve(this.props.web3.utils.hexToUtf8(outcomeInHex))
         })
       })
     })
@@ -133,7 +137,6 @@ class HostRound extends Component {
     this.setState({ outcomesBetNum: outcomeNumBets })
   }
 
-  // FIX: it's broken. returns corrupted data
   getMyRoundOutcomeBet = async () => {
     let promises = Array(this.state.numOutcomes).fill().map((_, i) => {
       const outcomeId = this.getOutcomeId(this.state.outcomes[i])
@@ -143,9 +146,8 @@ class HostRound extends Component {
           this.state.roundId,
           outcomeId
         ).then(wei => {
-          console.log(Number(wei))
-          //const ether = this.props.web3.utils.fromWei(String(wei))
-          //resolve(ether)
+          const ether = this.props.web3.utils.fromWei(String(wei))
+          resolve(ether)
         })
       })
     })
@@ -195,14 +197,88 @@ class HostRound extends Component {
       return <RoundNotFound />
     }
     return (
-      <div>       
-        
-         round tadaaaa
+      <div>
+        <RoundTimes
+          createdAt={this.state.createdAt}
+          timeoutAt={this.state.timeoutAt} />
+
+        {this.state.hostId}:
+        <HeadingPrimary>"{this.state.question}"</HeadingPrimary>
+
+        <RoundStats
+          bets={this.state.numBets}
+          pool={this.state.poolSize}
+          bonus={this.state.hostBonus} />
+
+        options with radiobuttons to vote<br />
+       
+        Note: Host charges a fee of {this.state.hostFee}<br />
   
       </div>
-    );
+    )
   }
 }
+
+const RoundTimes = ({ createdAt, endedAt, timeoutAt }) => {
+  const now = Date.now()/1000
+
+  const getRelativeTime = (timestamp) => {
+    return Moment.unix(timestamp).fromNow()
+  }
+
+  const getTimes = () => {
+    if (endedAt !== 0) {
+      return <p>ended {getRelativeTime(endedAt)}</p>
+    }
+    if (timeoutAt !== 0 && timeoutAt <= now) {
+      return <p>timed out {getRelativeTime(timeoutAt)}</p>
+    }
+    return (
+      <div>
+        <p>created {getRelativeTime(createdAt)}</p>
+        {
+          timeoutAt !== 0 &&
+          <p>timeout {getRelativeTime(timeoutAt)}</p>
+        }
+      </div>
+    )
+  }
+
+  return (
+    <div className="has-text-right">
+      {getTimes()}
+    </div>
+  )
+}
+
+const RoundStats = ({ bets, pool, bonus }) => {
+  bonus = 5
+  return (
+    <div className="level is-mobile">
+      <div className="level-item has-text-centered">
+        <div>
+          <p className="heading">Bets</p>
+          <p className="title">{bets}</p>
+        </div>
+      </div>
+      <div className="level-item has-text-centered">
+        <div>
+          <p className="heading">
+            Pool
+            { bonus !== 0 ? ' + Bonus' : '' }
+          </p>
+          <span className="title">
+            {pool}
+            { bonus !== 0 &&
+              <span className="has-text-success">+{bonus}</span> 
+            }
+          </span> ETH
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 // Wrap with React context consumer to provide web3 context
 export default (props) => (

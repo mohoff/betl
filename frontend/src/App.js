@@ -25,7 +25,7 @@ class App extends Component {
         <BrowserRouter>
           <div>
             <Header />  
-            <Web3Wrapper>         
+            <Web3Wrapper>
               <Switch>
                 <Route exact path="/"
                   component={Home}/>

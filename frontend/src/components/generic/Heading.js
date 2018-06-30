@@ -1,9 +1,21 @@
 import React from 'react'
 
-export const Heading = ({ children }) => {
+
+export const HeadingSection = ({ children }) => {
+  return <Heading containerClassNames="heading">{children}</Heading>
+}
+
+export const Heading = ({ containerClassNames, headingClassNames, children }) => {
+  const containerStyle = ['field', containerClassNames].join(' ')
+  const headingStyle = ['label', 'is-large', headingClassNames].join(' ')
+
   return (
-    <div className="field headline">
-      <label className="label is-large">{children}</label>
+    <div className={containerStyle}>
+      <label className={headingStyle}>{children}</label>
     </div>
   )
+}
+
+export const HeadingPrimary = ({ children }) => {
+  return <Heading headingClassNames="has-text-primary">{children}</Heading>
 }

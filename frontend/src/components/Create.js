@@ -6,7 +6,7 @@ import './Create.css'
 import {
   InputText,
   InputNumber,
-  Heading,
+  HeadingSection,
   Button,
   ButtonPrimary,
   WelcomeHost
@@ -152,7 +152,7 @@ class Create extends Component {
         </WelcomeHost>
         
         <div className="field">
-          <Heading>Question</Heading>
+          <HeadingSection>Question</HeadingSection>
           <div className="control">
             <InputText
               placeholder="Winning this match?"
@@ -163,7 +163,7 @@ class Create extends Component {
         </div>
 
         <div className="field">
-          <Heading>Outcomes</Heading>
+          <HeadingSection>Outcomes</HeadingSection>
           <OutcomesCreate 
             numOutcomes={this.state.numOutcomes}
             maxOutcomes={this.state.maxOutcomes}
@@ -192,7 +192,7 @@ class Create extends Component {
         </div>
 
         <div className="field">
-          <Heading>Options</Heading>
+          <HeadingSection>Options</HeadingSection>
           <Options
             handleMinChange={this.handleMinChange}
             handleSecChange={this.handleSecChange}

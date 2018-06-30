@@ -185,7 +185,9 @@ class Web3Wrapper extends Component {
   }
 
   isInitialMetamaskCheckDone = () => {
-    return this.state.web3 !== null && this.state.userAddress !== null &&  this.state.currentNetwork !== null
+    return this.state.web3 !== null
+        && this.state.userAddress !== null
+        &&  this.state.currentNetwork !== null
   }
 
   render = () => {

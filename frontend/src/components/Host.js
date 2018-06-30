@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import { Web3Context } from './Web3Wrapper'
 import {
-  Heading,
+  HeadingSection,
   Button,
   ButtonPrimary,
   ButtonDelete,
@@ -139,7 +139,7 @@ class Host extends Component {
         
         {getWelcome()}
       
-        <Heading>Open Rounds</Heading>
+        <HeadingSection>Open Rounds</HeadingSection>
         <Rounds rounds={this.state.rounds} />
         <ButtonPrimary
           isLoading={this.isLoading}
@@ -148,7 +148,7 @@ class Host extends Component {
             Refresh
         </ButtonPrimary>
     
-        <Heading>Stats</Heading>
+        <HeadingSection>Stats</HeadingSection>
         <Stats stats={this.state.stats} />
   
       </div>
