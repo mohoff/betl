@@ -344,13 +344,12 @@ contract Betl is Ownable {
     public
     view
     roundExists(_host, _roundId)
-    // roundNumber, status, createdAt, endedAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee
-    returns (uint, uint, uint, uint, uint, bytes32, uint, uint, uint, uint, uint)
+    // status, createdAt, endedAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee
+    returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint, uint)
   {
     Round storage r = getRound(_host, _roundId);
    
     return (
-      r.roundNumber,
       uint256(r.status),
       r.createdAt,
       r.endedAt,

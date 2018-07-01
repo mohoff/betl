@@ -1,5 +1,5 @@
 import React from 'react'
-import './Loader.scss'
+import './Loading.scss'
 
 
 export const LoadingMetamask = () => {

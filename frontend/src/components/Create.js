@@ -1,8 +1,8 @@
 import React, { Component } from 'react'
 import { Link } from 'react-router-dom'
+
 import { Web3Context } from './Web3Wrapper'
-import Utils from '../utils/utils.js'
-import './Create.css'
+import * as StringUtils from '../utils/StringUtils'
 import {
   InputText,
   InputNumber,
@@ -11,6 +11,7 @@ import {
   ButtonPrimary,
   WelcomeHost
 } from './generic'
+import './Create.css'
 
 class Create extends Component {
   constructor(props) {
@@ -101,7 +102,7 @@ class Create extends Component {
   }
 
   shouldDisableAddOutcome = (outcomes) => {
-    if (outcomes.some(Utils.isEmptyString) ||
+    if (outcomes.some(StringUtils.isEmptyString) ||
       (this.state.numOutcomes === this.state.maxOutcomes)) {
       return true
     }
@@ -243,7 +244,7 @@ const OutcomesCreate = ({ numOutcomes, maxOutcomes, outcomes, shouldHaveFocus, h
     let isSecondElement = (i === 1)
     let isLastElement = (i === numOutcomes-1)
     let isNotMaxElement = (i < maxOutcomes-1)
-    let isNoOutcomeEmpty = !outcomes.some(Utils.isEmptyString)
+    let isNoOutcomeEmpty = !outcomes.some(StringUtils.isEmptyString)
     let hasFocus = shouldHaveFocus && 
         (((outcomes[i] === '') || isLastElement) && !isFocusKnown) ? true : false
     isFocusKnown = hasFocus ? true : isFocusKnown

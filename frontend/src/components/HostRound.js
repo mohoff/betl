@@ -1,5 +1,4 @@
 import React, { Component } from 'react'
-import Moment from 'moment'
 
 import { Web3Context } from './Web3Wrapper'
 import BetState from './BetState'
@@ -8,6 +7,7 @@ import {
   LoadingRound,
   RoundNotFound
 } from './generic'
+import * as TimeUtils from '../utils/TimeUtils'
 
 class HostRound extends Component {
   constructor(props) {
@@ -17,7 +17,6 @@ class HostRound extends Component {
       // contract expects byte parameters to be prefixed with '0x'
       roundId: '0x' + props.match.params.roundId.toLowerCase(),
 
-      roundNumber: 0,
       status: null,
       createdAt: 0,
       endedAt: 0,
@@ -54,12 +53,11 @@ class HostRound extends Component {
   getRoundInfo = async () => {
     return new Promise((resolve, reject) => {
       this.props.betl && this.props.betl.getRoundInfo(this.state.hostId, this.state.roundId).then(r => {
-        let [roundNumber, status, createdAt, endedAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee] = r
+        let [status, createdAt, endedAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee] = r
         if (Number(status) === 0) reject()
 
         console.log('Success: getRoundInfo for roundId: ' + this.state.roundId)
         this.setState({
-          roundNumber: Number(roundNumber),
           status: Number(status),
           createdAt: Number(createdAt),
           endedAt: Number(endedAt),
@@ -220,39 +218,32 @@ class HostRound extends Component {
 }
 
 const RoundTimes = ({ createdAt, endedAt, timeoutAt }) => {
-  const now = Date.now()/1000
-
-  const getRelativeTime = (timestamp) => {
-    return Moment.unix(timestamp).fromNow()
-  }
-
   const getTimes = () => {
-    if (endedAt !== 0) {
-      return <p>ended {getRelativeTime(endedAt)}</p>
+    if (endedAt) {
+      return <p>ended {TimeUtils.getRelativeTime(endedAt)}</p>
     }
-    if (timeoutAt !== 0 && timeoutAt <= now) {
-      return <p>timed out {getRelativeTime(timeoutAt)}</p>
+    if (timeoutAt && timeoutAt <= TimeUtils.NOW) {
+      return <p>timed out {TimeUtils.getRelativeTime(timeoutAt)}</p>
     }
     return (
       <div>
-        <p>created {getRelativeTime(createdAt)}</p>
+        <p>created {TimeUtils.getRelativeTime(createdAt)}</p>
         {
-          timeoutAt !== 0 &&
-          <p>timeout {getRelativeTime(timeoutAt)}</p>
+          timeoutAt &&
+          <p>timeout {TimeUtils.getRelativeTime(timeoutAt)}</p>
         }
       </div>
     )
   }
 
   return (
-    <div className="has-text-right">
+    <div className="has-text-right is-italic">
       {getTimes()}
     </div>
   )
 }
 
 const RoundStats = ({ bets, pool, bonus }) => {
-  bonus = 5
   return (
     <div className="level is-mobile">
       <div className="level-item has-text-centered">
