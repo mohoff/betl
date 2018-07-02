@@ -3,7 +3,37 @@
 
 
 $primary: rgb(175, 49, 95);
+$primary-light: rgb(237, 213, 222);
 $grey-lighter: #444;
+
+$green: #58BC82;
+$green: #86BA90;
+$green-light: #96E6B3;
+$green-light: #8FE388;
+$yellow: #FFC857;
+$yellow: #E59500;
+$yellow: #F5F3BB;
+$yellow: #F2E94E;
+$yellow: #F4AC45;
+$orange: #DFA06E;
+$brown: #412722;
+$green-light: #35FF69;
+$violet-dark: #412234;
+$violet: #521945;
+$violet2: #4A2545;
+$violet-grey: #7E6B8F;
+$purple: #4E0250;
+$purple-grey: #645986;
+$blue: #8DA7BE;
+$blue: #0075A2;
+$blue-light: #A3D9FF;
+$blue-dark: #242F40;
+$blue-oxford: #002642;
+$cobalt: #1E3888;
+$grey-dark: #363636;
+$teal-light: #75DDDD;
+$teal-dark: #508991;
+$red: #FF3E41;
 
 $gap: 16px;
 $tablet: 500px;
@@ -18,6 +48,8 @@ $link-hover: rgb(196, 56, 107);
 
 
 @import 'bulma/bulma.sass';
+/*@import 'bulma-checkradio/dist/css/bulma-checkradio.sass';*/
+
 
 body {
 	max-width: 500px;
@@ -84,3 +116,4 @@ span {
 }
 
 @import './components/sections/Header.scss';
+

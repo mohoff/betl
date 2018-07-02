@@ -1,0 +1,55 @@
+@import '../main.scss';
+
+.stats-switch {
+	line-height: 120%;
+	margin: 10px 0px;
+}
+
+.select-outcome {
+	background-color: transparent !important;
+	border-top-right-radius: 1.5em !important;
+	border-bottom-right-radius: 1.5em !important;
+	background-color: $primary !important;
+	border: none !important;
+}
+
+.select-outcome > input {
+	width: 1.5em !important;
+	height: 1.5em !important;
+}
+.outcome-container {
+	padding-left: 10px;
+	position: relative;
+	/*background-color: #eee;*/
+}
+
+.stats-bars {
+	position: absolute;
+	right: 0;
+	top: 0;
+	height: 100%;
+	width: 40%;
+	background-color: #FFD9DA;
+	border-radius: 4px;
+	z-index: 1;
+}
+
+.stats-numbers {
+	position: relative;
+	color: $primary;
+	width: 25%;
+	height: 100%;
+	float: right;
+	padding-right: 16px;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	z-index: 2;
+}
+
+.outcome {
+	position: relative;
+	width: 75% !important;
+	text-overflow: ellipsis;
+	z-index: 2;
+}

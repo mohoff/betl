@@ -5,14 +5,19 @@ import BetState from './BetState'
 import {
   HeadingPrimary,
   LoadingRound,
-  RoundNotFound
+  RoundNotFound,
+  InputTextStatic,
+  Select
 } from './generic'
 import * as TimeUtils from '../utils/TimeUtils'
+import './HostRound.scss'
 
 class HostRound extends Component {
   constructor(props) {
   	super(props)
     this.state = {
+      hostAddress: null,
+      hostName: null,
       hostId: props.match.params.hostId.toLowerCase(),
       // contract expects byte parameters to be prefixed with '0x'
       roundId: '0x' + props.match.params.roundId.toLowerCase(),
@@ -32,17 +37,34 @@ class HostRound extends Component {
       outcomesBetNum: [],
       outcomesMyBet: [],
       outcomesWinShare: [],
+
+      selectedOutcome: null,
+      areStatsToggled: false
     }
   }
 
   componentDidMount = async () => {
-    const status = await this.getRoundInfo()
+    if(this.props.isAddress(this.state.hostId)) {
+      this.setState({ hostAddress: this.state.hostId })
+      this.props.getUserName(this.state.hostId).then(hostName => {
+        this.setState({ hostName: hostName })
+      })
+    } else {
+      this.setState({ hostName: this.state.hostId })
+      const hostAddress = await this.props.getUserAddress(this.state.hostId)
+      this.setState({ hostAddress: hostAddress })
+    }
+    this.getRound(this.state.hostAddress, this.state.roundId)
+  }
+
+  getRound = async(hostAddress, roundId) => {
+    const status = await this.getRoundInfo(hostAddress, roundId)
     if (this.isValidRound(status)) {
-      await this.getRoundOutcomes()
-      await this.getRoundOutcomePools()
-      await this.getRoundOutcomeNumBets()
-      await this.getMyRoundOutcomeBet()
-      await this.getRoundOutcomeWinShare()
+      await this.getRoundOutcomes(hostAddress, roundId)
+      await this.getRoundOutcomePools(hostAddress, roundId)
+      await this.getRoundOutcomeNumBets(hostAddress, roundId)
+      await this.getMyRoundOutcomeBet(hostAddress, roundId)
+      await this.getRoundOutcomeWinShare(hostAddress, roundId)
     } else {
       // TODO: rework this so this error is reflected in the UI properly
       throw new Error('Fetched round is not valid')
@@ -171,20 +193,12 @@ class HostRound extends Component {
     this.setState({ outcomesWinShare: outcomesWinShare })
   }
 
-  getHostInfo = async (hostId) => {
-    let hostAddress, hostName
-    if (this.props.isAddress(hostId)) {
-      hostAddress = hostId
-      hostName = await this.props.getUserName(hostAddress)
-    } else {
-      hostName = hostId
-      hostAddress = await this.props.getUserAddress(hostName)
-    }
+  handleSelect = () => {
+    console.log('handleSelect')
+  }
 
-    this.setState({
-      hostAddress: hostAddress.toLowerCase(),
-      hostName: hostName
-    })
+  handleStatsToggle = () => {
+    this.setState({ areStatsToggled: !this.state.areStatsToggled })
   }
   
   render() {
@@ -199,22 +213,95 @@ class HostRound extends Component {
         <RoundTimes
           createdAt={this.state.createdAt}
           timeoutAt={this.state.timeoutAt} />
-
-        {this.state.hostId}:
-        <HeadingPrimary>"{this.state.question}"</HeadingPrimary>
-
         <RoundStats
           bets={this.state.numBets}
           pool={this.state.poolSize}
           bonus={this.state.hostBonus} />
+       
+        <HostAsks hostName={this.state.hostName} />
+        <HeadingPrimary>"{this.state.question}"</HeadingPrimary>
 
-        options with radiobuttons to vote<br />
+        <RoundStatsSwitch
+          toggled={this.state.areStatsToggled} 
+          handleToggle={this.handleStatsToggle} />
+
+        <RoundOutcomes
+          numOutcomes={this.state.numOutcomes}
+          outcomes={this.state.outcomes}
+          selectedOutcome={this.state.selectedOutcome}
+          handleSelect={this.handleSelect}
+        />
        
         Note: Host charges a fee of {this.state.hostFee}<br />
   
       </div>
     )
   }
+}
+
+const HostAsks = ({ hostName }) => {
+  return hostName
+    ? <h2>{hostName} asks:</h2>
+    : null
+}
+
+const RoundStatsSwitch = ({ toggled , handleToggle }) => {
+  return (
+    <div className="has-text-right has-text-weight-bold stats-switch">
+      <SwitchElement active={!toggled} handleClick={handleToggle}>
+        BET
+      </SwitchElement>
+      <SwitchElement active={toggled} handleClick={handleToggle}>
+        #PLAYERS
+      </SwitchElement>
+    </div>
+  )
+}
+
+const SwitchElement = ({ active, handleClick, children }) => {
+  return (
+    <p>
+      <a className={(active ? 'has-text-grey' : 'has-text-grey-light') + ' is-unselectable'}
+        onClick={() => { active ? null : handleClick() }}>
+        {children}
+      </a>
+    </p>
+  )
+}
+
+const RoundOutcomes = ({ numOutcomes, outcomes, selectedOutcome, handleSelect }) => {
+  let outcomesArray = []
+
+  for (let i=0; i<numOutcomes; i++) {
+    outcomesArray.push(
+      <div key={String(i+1)} className="field">    
+        <div className="field has-addons">
+          <p className="control">
+            <a className="button is-static is-large select-outcome">
+              <Select
+                value={i}
+                checked={selectedOutcome === i}
+                onChange={handleSelect} />
+            </a>
+          </p>
+          <div className="control is-expanded outcome-container">
+            <div className="stats-bars"></div>
+            <Outcome value={outcomes[i]} />
+            <div className="has-text-right has-text-weight-bold is-size-5 stats-numbers">1000</div>
+
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return outcomesArray
+}
+
+const Outcome = ({ value }) => {
+  return value
+    ? <InputTextStatic value={value} className="outcome"/>
+    : null  
 }
 
 const RoundTimes = ({ createdAt, endedAt, timeoutAt }) => {
