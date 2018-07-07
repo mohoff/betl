@@ -1,8 +1,23 @@
 @import '../main.scss';
 
-.stats-switch {
-	line-height: 120%;
-	margin: 10px 0px;
+.question {
+	font-size: 2.5rem;
+	line-height: 2.5rem;
+}
+
+.round-times {
+	margin-bottom: 20px;
+}
+
+.bonus {
+	padding-left: 10px;
+}
+
+.unit-toggle {
+	position: absolute;
+	top: -0.5rem;
+	right: -3.3rem;
+	padding-right: -20px;
 }
 
 .select-outcome {

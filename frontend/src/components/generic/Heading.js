@@ -2,7 +2,7 @@ import React from 'react'
 
 
 export const HeadingSection = ({ children }) => {
-  return <Heading containerClassNames="heading">{children}</Heading>
+  return <Heading>{children}</Heading>
 }
 
 export const Heading = ({ containerClassNames, headingClassNames, children }) => {

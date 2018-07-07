@@ -46,6 +46,10 @@ $fullhd: 500px;
 $link: rgb(175, 49, 95);
 $link-hover: rgb(196, 56, 107);
 
+$font-text: 'Roboto';
+$font-primary: 'KarmaticArcade';
+$font-monospace: 'Inconsolata';
+
 
 @import 'bulma/bulma.sass';
 /*@import 'bulma-checkradio/dist/css/bulma-checkradio.sass';*/
@@ -54,12 +58,12 @@ $link-hover: rgb(196, 56, 107);
 body {
 	max-width: 500px;
 	margin: 0px auto;
-	font-family: Verdana, sans-serif;
+	font-family: $font-text, sans-serif;
 }
 
 button {
 	font-weight: 300;
-	font-family: "KarmaticArcade", sans-serif;
+	font-family: $font-primary, sans-serif;
 	letter-spacing: 5px;
 }
 
@@ -75,12 +79,44 @@ button {
     margin-top: 50px;
 }
 
-.monotype {
-    font-family: $family-monospace;
-}
-
 .is-large {
     font-size: 1.5rem;
+}
+
+.is-relative {
+    position: relative;
+}
+
+.is-abolute {
+    position: absolute;
+}
+
+.is-monospace {
+    font-family: $font-monospace, monospace;
+}
+
+.is-thin {
+    font-weight: 100
+}
+
+.is-light {
+    font-weight: 300;
+}
+
+.is-regular {
+    font-weight: 400;
+}
+
+.is-semi-bold {
+    font-weight: 500;
+}
+
+.is-bold {
+    font-weight: 700;
+}
+
+.is-heavy-bold {
+    font-weight: 900;
 }
 
 span {

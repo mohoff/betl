@@ -436,7 +436,7 @@ const RoundLink = ({ url, domain, roundId }) => {
   return (
     <div className="has-text-centered is-large">
       <Link to={url}>
-        <span className="monotype">
+        <span className="is-monospace is-size-3">
           {domain}/
             <span className="has-text-grey">...</span>/
             <b>{roundId}</b>

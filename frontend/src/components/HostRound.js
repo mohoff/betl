@@ -7,9 +7,12 @@ import {
   LoadingRound,
   RoundNotFound,
   InputTextStatic,
-  Select
+  Select,
+  ToggleText,
+  ButtonPrimary
 } from './generic'
 import * as TimeUtils from '../utils/TimeUtils'
+import * as StringUtils from '../utils/StringUtils'
 import './HostRound.scss'
 
 class HostRound extends Component {
@@ -39,7 +42,8 @@ class HostRound extends Component {
       outcomesWinShare: [],
 
       selectedOutcome: null,
-      areStatsToggled: false
+      areOutcomeStatsToggled: false,
+      arePoolUnitsToggled: false
     }
   }
 
@@ -197,8 +201,12 @@ class HostRound extends Component {
     console.log('handleSelect')
   }
 
-  handleStatsToggle = () => {
-    this.setState({ areStatsToggled: !this.state.areStatsToggled })
+  handleOutcomeStatsToggle = () => {
+    this.setState({ areOutcomeStatsToggled: !this.state.areOutcomeStatsToggled })
+  }
+
+  handleUnitToggle = () => {
+    this.setState({ arePoolUnitsToggled: !this.state.arePoolUnitsToggled })
   }
   
   render() {
@@ -210,28 +218,39 @@ class HostRound extends Component {
     }
     return (
       <div>
+        <HostAsks
+          hostAddress={this.state.hostAddress}
+          hostName={this.state.hostName} />
+        <Question>{this.state.question}</Question>
         <RoundTimes
           createdAt={this.state.createdAt}
           timeoutAt={this.state.timeoutAt} />
+
         <RoundStats
           bets={this.state.numBets}
           pool={this.state.poolSize}
-          bonus={this.state.hostBonus} />
+          bonus={this.state.hostBonus}
+          unitToggled={this.state.arePoolUnitsToggled}
+          handleUnitToggle={this.handleUnitToggle} />
        
-        <HostAsks hostName={this.state.hostName} />
-        <HeadingPrimary>"{this.state.question}"</HeadingPrimary>
+        <ToggleText
+          theDefaultActive="BETS"
+          theOther="#PLAYERS"
+          toggled={this.state.areOutcomeStatsToggled} 
+          handleToggle={this.handleOutcomeStatsToggle}
+          alignLeft={false} />
 
-        <RoundStatsSwitch
-          toggled={this.state.areStatsToggled} 
-          handleToggle={this.handleStatsToggle} />
-
-        <RoundOutcomes
+        <Outcomes
           numOutcomes={this.state.numOutcomes}
           outcomes={this.state.outcomes}
           selectedOutcome={this.state.selectedOutcome}
           handleSelect={this.handleSelect}
         />
        
+        <ButtonPrimary>
+          Vote
+        </ButtonPrimary>
+
         Note: Host charges a fee of {this.state.hostFee}<br />
   
       </div>
@@ -239,37 +258,31 @@ class HostRound extends Component {
   }
 }
 
-const HostAsks = ({ hostName }) => {
-  return hostName
-    ? <h2>{hostName} asks:</h2>
-    : null
-}
-
-const RoundStatsSwitch = ({ toggled , handleToggle }) => {
+const Question = ({ children }) => {
   return (
-    <div className="has-text-right has-text-weight-bold stats-switch">
-      <SwitchElement active={!toggled} handleClick={handleToggle}>
-        BET
-      </SwitchElement>
-      <SwitchElement active={toggled} handleClick={handleToggle}>
-        #PLAYERS
-      </SwitchElement>
+    <div className="">
+      <label className="has-text-primary is-bold is-italic question">
+        "{children}"
+      </label>
     </div>
   )
 }
 
-const SwitchElement = ({ active, handleClick, children }) => {
+const HostAsks = ({ hostAddress, hostName }) => {
   return (
-    <p>
-      <a className={(active ? 'has-text-grey' : 'has-text-grey-light') + ' is-unselectable'}
-        onClick={() => { active ? null : handleClick() }}>
-        {children}
-      </a>
-    </p>
+    <h2>
+      {
+        hostName ||
+        <span className="is-monospace">
+          {StringUtils.formatAddress(hostAddress)}
+        </span>
+      }
+      asks:
+    </h2>
   )
 }
 
-const RoundOutcomes = ({ numOutcomes, outcomes, selectedOutcome, handleSelect }) => {
+const Outcomes = ({ numOutcomes, outcomes, selectedOutcome, handleSelect }) => {
   let outcomesArray = []
 
   for (let i=0; i<numOutcomes; i++) {
@@ -287,8 +300,9 @@ const RoundOutcomes = ({ numOutcomes, outcomes, selectedOutcome, handleSelect })
           <div className="control is-expanded outcome-container">
             <div className="stats-bars"></div>
             <Outcome value={outcomes[i]} />
-            <div className="has-text-right has-text-weight-bold is-size-5 stats-numbers">1000</div>
-
+            <div className="has-text-right is-monospace is-semi-bold is-size-5 stats-numbers">
+              1000
+            </div>
           </div>
         </div>
       </div>
@@ -324,33 +338,62 @@ const RoundTimes = ({ createdAt, endedAt, timeoutAt }) => {
   }
 
   return (
-    <div className="has-text-right is-italic">
+    <div className="is-italic is-regular has-text-grey round-times is-size-7">
       {getTimes()}
     </div>
   )
 }
 
-const RoundStats = ({ bets, pool, bonus }) => {
+const RoundStats = ({ bets, pool, bonus, unitToggled, handleUnitToggle }) => {
+
+  bets = 12
+  pool = 4000000000000000000.12343246
+  bonus = 3100000000000000000.12
+  if (!bets) {
+    return (
+      <div className="has-text-centered">
+        Be the first to place a Bet!
+      </div>
+    )
+  }
+
   return (
     <div className="level is-mobile">
-      <div className="level-item has-text-centered">
-        <div>
-          <p className="heading">Bets</p>
-          <p className="title">{bets}</p>
-        </div>
-      </div>
       <div className="level-item has-text-centered">
         <div>
           <p className="heading">
             Pool
             { bonus !== 0 ? ' + Bonus' : '' }
           </p>
-          <span className="title">
-            {pool}
-            { bonus !== 0 &&
-              <span className="has-text-success">+{bonus}</span> 
-            }
-          </span> ETH
+          <div className="is-relative">
+            <span className="title is-monospace is-size-2">
+              { unitToggled
+                ? StringUtils.formatToMilliEth(pool)
+                : StringUtils.formatToEth(pool) }
+              { bonus !== 0 &&
+                <span className="has-text-success bonus">
+                  +
+                  { unitToggled
+                    ? StringUtils.formatToMilliEth(bonus)
+                    : StringUtils.formatToEth(bonus)
+                  }
+                </span> 
+              }
+            </span>
+            <div className="unit-toggle">
+              <ToggleText
+                theDefaultActive="ETH"
+                theOther="mETH"
+                toggled={unitToggled} 
+                handleToggle={handleUnitToggle} />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="level-item has-text-centered">
+        <div>
+          <p className="heading">Bets</p>
+          <p className="title is-monospace is-size-2">{bets}</p>
         </div>
       </div>
     </div>
