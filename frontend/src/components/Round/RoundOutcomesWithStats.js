@@ -5,6 +5,8 @@ import {
   Select
 } from '../generic'
 
+import './RoundOutcomesWithStats.scss'
+
 
 export const RoundOutcomesWithStats = ({ status, numOutcomes, outcomes, winShares, stats, statsSum, selectedOutcome, handleSelect }) => {
   let outcomesArray = []
@@ -21,7 +23,8 @@ export const RoundOutcomesWithStats = ({ status, numOutcomes, outcomes, winShare
             status={status}
             index={i}
             isPicked={isPicked}
-            selectedOutcome={1}
+            isSelected={true}
+            winShare={winShares[i]}
             handleSelect={handleSelect} />
           <OutcomeText
             isPicked={isPicked}
@@ -41,12 +44,21 @@ export const RoundOutcomesWithStats = ({ status, numOutcomes, outcomes, winShare
   return outcomesArray
 }
 
-const OutcomeLeft = ({ status, index, isPicked, isSelected, handleSelect }) => {
+const OutcomeLeft = ({ status, index, isPicked, isSelected, winShare, handleSelect }) => {
   status = 1
 
   switch (status) {
     case 1:
-      return <i className={'fas ' + (isPicked ? 'fa-check has-text-primary' : 'fa-times has-text-grey-light')}></i>
+      return (
+        <Fragment>
+          <i className={'fas ' + (isPicked ? 'fa-check has-text-primary' : 'fa-times has-text-grey-light')}></i>
+          {isPicked && 
+            <div className="is-absolute is-monospace has-text-primary is-size-6 is-bold winshare">
+              {winShare}%
+            </div>
+          }
+        </Fragment>
+      )
     case 2:
       return (
         <Select
@@ -101,7 +113,7 @@ const OutcomeRightStatNumber = ({ value, isPicked }) => {
 const OutcomeContainer = ({ children }) => {
   return (
     <div className="field has-addons">
-      <p className="control">
+      <p className="control is-relative">
         <a className="button is-static is-large outcome-left">
           {children[0]}
         </a>
