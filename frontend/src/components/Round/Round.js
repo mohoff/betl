@@ -11,9 +11,9 @@ import { RoundTimes } from './RoundTimes'
 import { RoundFee } from './RoundFee'
 import {
   LoadingRound,
-  RoundNotFound,
   ToggleText,
-  ButtonPrimary
+  ButtonPrimary,
+  ErrorPage
 } from '../generic'
 
 import './Round.scss'
@@ -41,7 +41,7 @@ class Round extends Component {
       hostBonus: 0,
       hostFee: 0,
       outcomes: [],
-      outcomesBetPool: [5000000000000000, 1200000000000000, 7000000000000000],
+      outcomesBetPool: [0.01, 1.2, 0.77777],
       outcomesBetNum: [23, 56, 11],
       outcomesMyBet: [500000000000000, 0, 5000000],
       outcomesWinShare: [0, 10, 90],
@@ -213,8 +213,16 @@ class Round extends Component {
   handleUnitToggle = () => {
     this.setState({ arePoolUnitsToggled: !this.state.arePoolUnitsToggled })
   }
+
+  isValidRoundId = (roundId) => {
+    return roundId.length === 10 && 
+        this.props.web3.utils.isHexStrict(roundId)
+  }
   
   render() {
+    if (!this.isValidRoundId(this.state.roundId)) {
+      return <RoundInvalid />
+    }
     if (this.state.status === null) {
       return <LoadingRound />
     }
@@ -275,6 +283,22 @@ class Round extends Component {
       </div>
     )
   }
+}
+
+const RoundInvalid = () => {
+  return (
+    <ErrorPage subject="Invalid Bet!">
+      Please make sure the URL is<br />in a correct format
+    </ErrorPage>
+  )
+}
+
+const RoundNotFound = () => {
+  return (
+    <ErrorPage subject="Bet not found!">
+      Bet doesn't exist
+    </ErrorPage>
+  )
 }
 
 // Wrap with React context consumer to provide web3 context

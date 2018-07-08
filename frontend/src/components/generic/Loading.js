@@ -4,25 +4,27 @@ import './Loading.scss'
 
 
 export const LoadingMetamask = () => {
-  return <LoadingFullwidth>Detecting Metamask...</LoadingFullwidth>
+  return <LoadingPage>Detecting Metamask...</LoadingPage>
 }
 
 export const LoadingRound = () => {
-  return <LoadingFullwidth>Loading Bet...</LoadingFullwidth>
+  return <LoadingPage>Loading Bet...</LoadingPage>
 }
 
-export const LoadingFullwidth = ({ children }) => {
+export const LoadingPage = ({ children }) => {
   return (
-    <div className="is-fullwidth">
+    <div className="is-fullwidth has-text-centered error-container">
       <SpinnerLarge />
-      <LoadingText>{children}</LoadingText>
+      <p className="is-italic is-size-4">
+        {children}
+      </p>
     </div>
   )
 }
 
 const LoadingText = ({ children }) => {
   return (
-    <p className="is-italic has-text-centered is-size-5">
+    <p className="is-italic has-text-centered is-size-4">
       {children}
     </p>
   )

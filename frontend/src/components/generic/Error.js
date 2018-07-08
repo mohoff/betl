@@ -1,47 +1,47 @@
 import React from 'react'
 
+import './Error.scss'
+
+
 export const MetamaskNotAvailable = () => {
   return (
-    <ErrorMessage subject="Metamask not installed!">
+    <ErrorPage subject="Metamask not installed!">
       Please install Metamask browser plugin to proceed
-    </ErrorMessage>
+    </ErrorPage>
   )
 }
 
 export const MetamaskNotLoggedIn = () => {
   return (
-    <ErrorMessage subject="Not logged in!">
+    <ErrorPage subject="Not logged in!">
       Please log in Metamask browser plugin
-    </ErrorMessage>
+    </ErrorPage>
   )
 }
 
 export const MetamaskWrongNetwork = ({ target, current }) => {
   return (
-    <ErrorMessage subject="Wrong network!">
+    <ErrorPage subject="Wrong network!">
       Please select the {target} network!
       Currently you're on the {current} network.
-    </ErrorMessage>
+    </ErrorPage>
   )
 }
 
-export const RoundNotFound = () => {
-  return <ErrorMessage subject="Invalid Bet!">Round not found</ErrorMessage>
+const ErrorSymbol = () => {
+  return <p className="has-text-centered has-text-primary has-font-primary is-size-1">!</p>
 }
 
-const ErrorMessage = ({ subject, children }) => {
+export const ErrorPage = ({ subject, children }) => {
   return (
-    <div className="is-fullwidth">
-      <div className="message is-danger">
-        <div className="message-header">
-          {subject}
-        </div>
-        <div className="message-body field is-fullwidth">  
-          <p className="is-italic has-text-centered is-size-5">
-            {children}
-          </p>
-        </div>
-      </div>
+    <div className="is-fullwidth has-text-centered error-container">
+      <ErrorSymbol />
+      <p className="is-size-4 error-subject">
+        {subject}
+      </p>
+      <p className="is-italic is-size-6 error-text">  
+        {children}
+      </p>
     </div>
   )
 }
