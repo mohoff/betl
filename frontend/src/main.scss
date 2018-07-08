@@ -119,6 +119,10 @@ button {
     font-weight: 900;
 }
 
+.is-striked-through {
+    text-decoration: line-through;
+}
+
 span {
     &.is-loading {
         position: relative;

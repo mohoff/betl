@@ -1,4 +1,4 @@
-@import '../main.scss';
+@import '../../main.scss';
 
 @mixin host {
 	padding: 4px 6px;
@@ -35,8 +35,14 @@
 	padding-left: 5px;
 }
 
-.select-outcome {
+.outcome-left {
 	background-color: transparent !important;
+	border: none !important;
+	width: 1.5em;
+	height: 1.5em;
+}
+
+.select-outcome {
 	border-top-right-radius: 1.5em !important;
 	border-bottom-right-radius: 1.5em !important;
 	background-color: $primary !important;
@@ -47,7 +53,8 @@
 	width: 1.5em !important;
 	height: 1.5em !important;
 }
-.outcome-container {
+
+.outcome-right {
 	padding-left: 10px;
 	position: relative;
 	/*background-color: #eee;*/

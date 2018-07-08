@@ -1,21 +1,26 @@
-import React, { Component, Fragment } from 'react'
+import React, { Component } from 'react'
 
-import { Web3Context } from './Web3Wrapper'
-import BetState from './BetState'
+import { Web3Context } from '../Web3Wrapper'
+
+import { RoundStatus } from './RoundStatus'
+import { RoundOutcomesWithStats } from './RoundOutcomesWithStats'
+import { RoundStats } from './RoundStats'
+import { RoundHost } from './RoundHost'
+import { RoundQuestion } from './RoundQuestion'
+import { RoundTimes } from './RoundTimes'
+import { RoundFee } from './RoundFee'
 import {
-  HeadingPrimary,
   LoadingRound,
   RoundNotFound,
-  InputTextStatic,
-  Select,
   ToggleText,
   ButtonPrimary
-} from './generic'
-import * as TimeUtils from '../utils/TimeUtils'
-import * as StringUtils from '../utils/StringUtils'
-import './HostRound.scss'
+} from '../generic'
 
-class HostRound extends Component {
+import './Round.scss'
+
+
+
+class Round extends Component {
   constructor(props) {
   	super(props)
     this.state = {
@@ -36,10 +41,10 @@ class HostRound extends Component {
       hostBonus: 0,
       hostFee: 0,
       outcomes: [],
-      outcomesBetPool: [],
-      outcomesBetNum: [],
-      outcomesMyBet: [],
-      outcomesWinShare: [],
+      outcomesBetPool: [5000000000000000, 1200000000000000, 7000000000000000],
+      outcomesBetNum: [23, 56, 11],
+      outcomesMyBet: [500000000000000, 0, 5000000],
+      outcomesWinShare: [0, 10, 90],
 
       selectedOutcome: null,
       areOutcomeStatsToggled: false,
@@ -65,10 +70,10 @@ class HostRound extends Component {
     const status = await this.getRoundInfo(hostAddress, roundId)
     if (this.isValidRound(status)) {
       await this.getRoundOutcomes(hostAddress, roundId)
-      await this.getRoundOutcomePools(hostAddress, roundId)
-      await this.getRoundOutcomeNumBets(hostAddress, roundId)
-      await this.getMyRoundOutcomeBet(hostAddress, roundId)
-      await this.getRoundOutcomeWinShare(hostAddress, roundId)
+      //await this.getRoundOutcomePools(hostAddress, roundId)
+      //await this.getRoundOutcomeNumBets(hostAddress, roundId)
+      //await this.getMyRoundOutcomeBet(hostAddress, roundId)
+      ///wait this.getRoundOutcomeWinShare(hostAddress, roundId)
     } else {
       // TODO: rework this so this error is reflected in the UI properly
       throw new Error('Fetched round is not valid')
@@ -218,13 +223,20 @@ class HostRound extends Component {
     }
     return (
       <div>
-        <HostAsks
+        <RoundHost
           hostAddress={this.state.hostAddress}
           hostName={this.state.hostName} />
-        <Question>{this.state.question}</Question>
+
+        <RoundQuestion>
+          {this.state.question}
+        </RoundQuestion>
+
         <RoundTimes
           createdAt={this.state.createdAt}
           timeoutAt={this.state.timeoutAt} />
+
+        <RoundStatus
+          status={this.state.status} />
 
         <RoundStats
           bets={this.state.numBets}
@@ -240,196 +252,34 @@ class HostRound extends Component {
           handleToggle={this.handleOutcomeStatsToggle}
           alignLeft={false} />
 
-        <Outcomes
+        <RoundOutcomesWithStats
+          status={this.state.status}
           numOutcomes={this.state.numOutcomes}
           outcomes={this.state.outcomes}
+          winShares={this.state.outcomesWinShare}
+          stats={this.state.areOutcomeStatsToggled
+            ? this.state.outcomesBetNum
+            : this.state.outcomesBetPool}
+          statsSum={this.state.areOutcomeStatsToggled
+            ? this.state.outcomesBetNum.reduce((a, b) => a + b, 0)
+            : this.state.outcomesBetPool.reduce((a, b) => a + b, 0)}
           selectedOutcome={this.state.selectedOutcome}
-          handleSelect={this.handleSelect}
-        />
+          handleSelect={this.handleSelect} />
        
         <ButtonPrimary>
           Vote
         </ButtonPrimary>
-        <HostFee fee={this.state.hostFee} />
-  
+
+        <RoundFee
+          fee={this.state.hostFee} />
       </div>
     )
   }
 }
-
-const Question = ({ children }) => {
-  return (
-    <h2 className="has-text-primary is-bold is-italic question">
-      "{children}"
-    </h2>
-  )
-}
-
-const HostAsks = ({ hostAddress, hostName }) => {
-  return (
-    <div className="field">
-      {
-        hostName
-          ? <span className="host-name">
-              {hostName}
-            </span>
-          : <span className="host-address is-monospace">
-              {StringUtils.formatAddress(hostAddress)}
-            </span>
-      }
-      &nbsp;asks:
-    </div>
-  )
-}
-
-const Outcomes = ({ numOutcomes, outcomes, selectedOutcome, handleSelect }) => {
-  let outcomesArray = []
-
-  for (let i=0; i<numOutcomes; i++) {
-    outcomesArray.push(
-      <div key={String(i+1)} className="field">    
-        <div className="field has-addons">
-          <p className="control">
-            <a className="button is-static is-large select-outcome">
-              <Select
-                value={i}
-                checked={selectedOutcome === i}
-                onChange={handleSelect} />
-            </a>
-          </p>
-          <div className="control is-expanded outcome-container">
-            <OutcomeStats value={1000} maxValue={10000} />
-            <Outcome value={outcomes[i]} />
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return outcomesArray
-}
-
-const OutcomeStats = ({ value, maxValue }) => {
-  return (
-    <Fragment>
-      <OutcomeStatBar value={value} maxValue={maxValue} />
-      <OutcomeStatNumber value={value} />
-    </Fragment>
-  )
-}
-
-const OutcomeStatBar = ({ value, maxValue }) => {
-  const width = {
-    width: (value/maxValue)*100 + '%'
-  }
-
-  return <div style={width} className="stats-bars"></div>
-}
-
-const OutcomeStatNumber = ({ value }) => {
-  return (
-    <div className="has-text-right is-monospace is-semi-bold is-size-5 stats-numbers">
-      {value}
-    </div>
-  )
-}
-
-const Outcome = ({ value }) => {
-  return value
-    ? <InputTextStatic value={value} className="outcome"/>
-    : null  
-}
-
-const RoundTimes = ({ createdAt, endedAt, timeoutAt }) => {
-  const getTimes = () => {
-    if (endedAt) {
-      return <p>ended {TimeUtils.getRelativeTime(endedAt)}</p>
-    }
-    if (timeoutAt && timeoutAt <= TimeUtils.NOW) {
-      return <p>timed out {TimeUtils.getRelativeTime(timeoutAt)}</p>
-    }
-    return (
-      <div>
-        <p>created {TimeUtils.getRelativeTime(createdAt)}</p>
-        {
-          timeoutAt &&
-          <p>timeout {TimeUtils.getRelativeTime(timeoutAt)}</p>
-        }
-      </div>
-    )
-  }
-
-  return (
-    <div className="has-text-right is-italic is-regular has-text-grey round-times is-size-7">
-      {getTimes()}
-    </div>
-  )
-}
-
-const RoundStats = ({ bets, pool, bonus, unitToggled, handleUnitToggle }) => {
-  if (!bets) {
-    return (
-      <div className="has-text-centered is-italic">
-        Be the first to place a Bet!
-      </div>
-    )
-  }
-
-  return (
-    <div className="columns">
-      <div className="column has-text-centered">
-        <div>
-          <p className="heading">
-            Pool
-            { bonus !== 0 ? ' + Bonus' : '' }
-          </p>
-          <div className="is-relative">
-            <span className="title is-monospace is-size-2">
-              { unitToggled
-                ? StringUtils.formatToMilliEth(pool)
-                : StringUtils.formatToEth(pool) }
-              { bonus !== 0 &&
-                <span className="has-text-success bonus">
-                  +
-                  { unitToggled
-                    ? StringUtils.formatToMilliEth(bonus)
-                    : StringUtils.formatToEth(bonus)
-                  }
-                </span>
-              }
-            </span>
-            <div className="unit-toggle">
-              <ToggleText
-                theDefaultActive="ETH"
-                theOther="mETH"
-                toggled={unitToggled} 
-                handleToggle={handleUnitToggle} />
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="column has-text-centered">
-        <div>
-          <p className="heading">Bets</p>
-          <p className="title is-monospace is-size-2">{bets}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const HostFee = ({ fee }) => {
-  return fee
-    ? <p class="help has-text-centered is-italic has-text-primary">
-        Host charges a fee of {fee}%
-      </p>
-    : null
-}
-
 
 // Wrap with React context consumer to provide web3 context
 export default (props) => (
   <Web3Context.Consumer>
-    {context => <HostRound {...props} {...context} />}
+    {context => <Round {...props} {...context} />}
   </Web3Context.Consumer>
 )

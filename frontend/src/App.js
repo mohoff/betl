@@ -15,7 +15,7 @@ import Home from './components/Home.js'
 import Create from './components/Create.js'
 import Join from './components/Join.js'
 import Host from './components/Host.js'
-import HostRound from './components/HostRound.js'
+import Round from './components/Round/Round.js'
 import NotFound from './components/NotFound.js'
 
 class App extends Component {
@@ -34,7 +34,7 @@ class App extends Component {
                 <Route path="/join"
                   component={Join}/>
                 <Route path="/:hostId/:roundId"
-                  component={HostRound}/>
+                  component={Round}/>
                 <Route path="/:hostId"
                   render={Host}/>
                 <Route component={NotFound} />
