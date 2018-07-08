@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React, { Component, Fragment } from 'react'
 
 import { Web3Context } from './Web3Wrapper'
 import BetState from './BetState'
@@ -250,8 +250,7 @@ class HostRound extends Component {
         <ButtonPrimary>
           Vote
         </ButtonPrimary>
-
-        Note: Host charges a fee of {this.state.hostFee}<br />
+        <HostFee fee={this.state.hostFee} />
   
       </div>
     )
@@ -260,25 +259,26 @@ class HostRound extends Component {
 
 const Question = ({ children }) => {
   return (
-    <div className="">
-      <label className="has-text-primary is-bold is-italic question">
-        "{children}"
-      </label>
-    </div>
+    <h2 className="has-text-primary is-bold is-italic question">
+      "{children}"
+    </h2>
   )
 }
 
 const HostAsks = ({ hostAddress, hostName }) => {
   return (
-    <h2>
+    <div className="field">
       {
-        hostName ||
-        <span className="is-monospace">
-          {StringUtils.formatAddress(hostAddress)}
-        </span>
+        hostName
+          ? <span className="host-name">
+              {hostName}
+            </span>
+          : <span className="host-address is-monospace">
+              {StringUtils.formatAddress(hostAddress)}
+            </span>
       }
-      asks:
-    </h2>
+      &nbsp;asks:
+    </div>
   )
 }
 
@@ -298,11 +298,8 @@ const Outcomes = ({ numOutcomes, outcomes, selectedOutcome, handleSelect }) => {
             </a>
           </p>
           <div className="control is-expanded outcome-container">
-            <div className="stats-bars"></div>
+            <OutcomeStats value={1000} maxValue={10000} />
             <Outcome value={outcomes[i]} />
-            <div className="has-text-right is-monospace is-semi-bold is-size-5 stats-numbers">
-              1000
-            </div>
           </div>
         </div>
       </div>
@@ -310,6 +307,31 @@ const Outcomes = ({ numOutcomes, outcomes, selectedOutcome, handleSelect }) => {
   }
 
   return outcomesArray
+}
+
+const OutcomeStats = ({ value, maxValue }) => {
+  return (
+    <Fragment>
+      <OutcomeStatBar value={value} maxValue={maxValue} />
+      <OutcomeStatNumber value={value} />
+    </Fragment>
+  )
+}
+
+const OutcomeStatBar = ({ value, maxValue }) => {
+  const width = {
+    width: (value/maxValue)*100 + '%'
+  }
+
+  return <div style={width} className="stats-bars"></div>
+}
+
+const OutcomeStatNumber = ({ value }) => {
+  return (
+    <div className="has-text-right is-monospace is-semi-bold is-size-5 stats-numbers">
+      {value}
+    </div>
+  )
 }
 
 const Outcome = ({ value }) => {
@@ -338,28 +360,24 @@ const RoundTimes = ({ createdAt, endedAt, timeoutAt }) => {
   }
 
   return (
-    <div className="is-italic is-regular has-text-grey round-times is-size-7">
+    <div className="has-text-right is-italic is-regular has-text-grey round-times is-size-7">
       {getTimes()}
     </div>
   )
 }
 
 const RoundStats = ({ bets, pool, bonus, unitToggled, handleUnitToggle }) => {
-
-  bets = 12
-  pool = 4000000000000000000.12343246
-  bonus = 3100000000000000000.12
   if (!bets) {
     return (
-      <div className="has-text-centered">
+      <div className="has-text-centered is-italic">
         Be the first to place a Bet!
       </div>
     )
   }
 
   return (
-    <div className="level is-mobile">
-      <div className="level-item has-text-centered">
+    <div className="columns">
+      <div className="column has-text-centered">
         <div>
           <p className="heading">
             Pool
@@ -377,7 +395,7 @@ const RoundStats = ({ bets, pool, bonus, unitToggled, handleUnitToggle }) => {
                     ? StringUtils.formatToMilliEth(bonus)
                     : StringUtils.formatToEth(bonus)
                   }
-                </span> 
+                </span>
               }
             </span>
             <div className="unit-toggle">
@@ -390,7 +408,7 @@ const RoundStats = ({ bets, pool, bonus, unitToggled, handleUnitToggle }) => {
           </div>
         </div>
       </div>
-      <div className="level-item has-text-centered">
+      <div className="column has-text-centered">
         <div>
           <p className="heading">Bets</p>
           <p className="title is-monospace is-size-2">{bets}</p>
@@ -398,6 +416,14 @@ const RoundStats = ({ bets, pool, bonus, unitToggled, handleUnitToggle }) => {
       </div>
     </div>
   )
+}
+
+const HostFee = ({ fee }) => {
+  return fee
+    ? <p class="help has-text-centered is-italic has-text-primary">
+        Host charges a fee of {fee}%
+      </p>
+    : null
 }
 
 
