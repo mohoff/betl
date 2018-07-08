@@ -26,3 +26,7 @@ export const ToggleElement = ({ active, handleClick, children }) => {
     </p>
   )
 }
+
+export const Select = ({ index, onChange, isSelected, ...other }) => {
+  return <input type="radio" onChange={onChange} checked={isSelected} value={index} {...other} />
+}

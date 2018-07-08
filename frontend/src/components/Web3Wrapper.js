@@ -26,12 +26,7 @@ class Web3Wrapper extends Component {
 
       userAddress: null,
       userBalance: null,
-      userName: null,
-
-      ethPrices: {
-        USD: null,
-        EUR: null
-      }
+      userName: null
     }
   }
 
@@ -39,25 +34,6 @@ class Web3Wrapper extends Component {
     await this.initWeb3()
     this.initBetl()
     this.startPollingMetamaskStatus()
-  }
-
-  componentDidMount = () => {
-    this.fetchPrice('USD')
-    this.fetchPrice('EUR')
-  }
-
-  fetchPrice = (currency) => {
-    fetch(process.env.REACT_APP_ETH_PRICE_API).then(r => {
-      return r.json()
-    }).then(json => {
-      return json.data.quotes[currency]
-    }).then(fiat => {
-      this.setState(prevState => {
-        let ethPrices = prevState.ethPrices
-        ethPrices[currency] = fiat
-        return ethPrices
-      })
-    })
   }
 
   initWeb3 = () => {

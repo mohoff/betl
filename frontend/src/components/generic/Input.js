@@ -26,7 +26,3 @@ const Input = ({ value, placeholder, onChange, className, ...other }) => {
     />
   )
 }
-
-export const Select = ({ index, ...other}) => {
-  return <input type="radio" value={index} {...other} />
-}

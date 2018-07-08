@@ -8,13 +8,12 @@ import {
 import './RoundOutcomesWithStats.scss'
 
 
-export const RoundOutcomesWithStats = ({ status, numOutcomes, outcomes, winShares, stats, statsSum, selectedOutcome, handleSelect }) => {
+export const RoundOutcomesWithStats = ({ status, numOutcomes, outcomes, winShares, stats, statsSum, selectedIndex, handleSelect }) => {
   let outcomesArray = []
-  status = 4
   const isDecided = status === 4
 
   for (let i=0; i<numOutcomes; i++) {
-    const isPicked = winShares[i] > 0
+    const isPicked = false //winShares[i] > 0
 
     outcomesArray.push(
       <div key={String(i+1)} className="field">    
@@ -23,7 +22,7 @@ export const RoundOutcomesWithStats = ({ status, numOutcomes, outcomes, winShare
             status={status}
             index={i}
             isPicked={isPicked}
-            isSelected={true}
+            isSelected={selectedIndex === i}
             winShare={winShares[i]}
             handleSelect={handleSelect} />
           <OutcomeText
@@ -45,8 +44,6 @@ export const RoundOutcomesWithStats = ({ status, numOutcomes, outcomes, winShare
 }
 
 const OutcomeLeft = ({ status, index, isPicked, isSelected, winShare, handleSelect }) => {
-  status = 1
-
   switch (status) {
     case 1:
       return (
@@ -63,9 +60,8 @@ const OutcomeLeft = ({ status, index, isPicked, isSelected, winShare, handleSele
       return (
         <Select
           value={index}
-          checked={isSelected}
           onChange={handleSelect}
-        />
+          isSelected={isSelected} />
       )
     default:
       return null
@@ -75,7 +71,9 @@ const OutcomeLeft = ({ status, index, isPicked, isSelected, winShare, handleSele
 const OutcomeText = ({ children, isPicked, isBetDecided }) => {
   let extraStyle
   if (isBetDecided) {
-    extraStyle = isPicked ? 'is-bold' : 'is-striked-through'
+    extraStyle = isPicked
+      ? 'is-bold'
+      : 'is-striked-through'
   }
 
   return children
@@ -114,7 +112,7 @@ const OutcomeContainer = ({ children }) => {
   return (
     <div className="field has-addons">
       <p className="control is-relative">
-        <a className="button is-static is-large outcome-left">
+        <a className="button is-large outcome-left">
           {children[0]}
         </a>
       </p>

@@ -22,14 +22,6 @@ export const LoadingPage = ({ children }) => {
   )
 }
 
-const LoadingText = ({ children }) => {
-  return (
-    <p className="is-italic has-text-centered is-size-4">
-      {children}
-    </p>
-  )
-}
-
 const SpinnerLarge = () => {
   return (
     <div className="container-large">

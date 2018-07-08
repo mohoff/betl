@@ -13,8 +13,11 @@ import {
   LoadingRound,
   ToggleText,
   ButtonPrimary,
+  InputNumber,
   ErrorPage
 } from '../generic'
+
+import * as StringUtils from '../../utils/StringUtils'
 
 import './Round.scss'
 
@@ -24,11 +27,12 @@ class Round extends Component {
   constructor(props) {
   	super(props)
     this.state = {
-      hostAddress: null,
-      hostName: null,
       hostId: props.match.params.hostId.toLowerCase(),
       // contract expects byte parameters to be prefixed with '0x'
       roundId: '0x' + props.match.params.roundId.toLowerCase(),
+
+      hostAddress: null,
+      hostName: null,
 
       status: null,
       createdAt: 0,
@@ -47,12 +51,19 @@ class Round extends Component {
       outcomesWinShare: [0, 10, 90],
 
       selectedOutcome: null,
+      inputBet: 0,
+      inputBetFiat: 0,
       areOutcomeStatsToggled: false,
-      arePoolUnitsToggled: false
+      arePoolUnitsToggled: false,
+
+      ethFiatRate: 0
     }
   }
 
   componentDidMount = async () => {
+    this.getEthFiatRate()
+    console.log(navigator.language)
+
     if(this.props.isAddress(this.state.hostId)) {
       this.setState({ hostAddress: this.state.hostId })
       this.props.getUserName(this.state.hostId).then(hostName => {
@@ -66,17 +77,23 @@ class Round extends Component {
     this.getRound(this.state.hostAddress, this.state.roundId)
   }
 
+  getEthFiatRate = async () => {
+    fetch(process.env.REACT_APP_ETH_PRICE_API)
+    .then(response => response.json())
+    .then(json => json.data.quotes[process.env.REACT_APP_FIAT_CURRENCY].price)
+    .then(fiatRate => {
+      this.setState({ ethFiatRate: Number(fiatRate) })
+    })
+  }
+
   getRound = async(hostAddress, roundId) => {
     const status = await this.getRoundInfo(hostAddress, roundId)
-    if (this.isValidRound(status)) {
+    if (status > 0 && status <= 8) {
       await this.getRoundOutcomes(hostAddress, roundId)
       //await this.getRoundOutcomePools(hostAddress, roundId)
       //await this.getRoundOutcomeNumBets(hostAddress, roundId)
       //await this.getMyRoundOutcomeBet(hostAddress, roundId)
-      ///wait this.getRoundOutcomeWinShare(hostAddress, roundId)
-    } else {
-      // TODO: rework this so this error is reflected in the UI properly
-      throw new Error('Fetched round is not valid')
+      //await this.getRoundOutcomeWinShare(hostAddress, roundId)
     }
     console.log(this.state)
   }
@@ -105,10 +122,6 @@ class Round extends Component {
         reject()
       })
     })
-  }
-
-  isValidRound = (status) => {
-    return status < 7
   }
 
   getRoundOutcomes = async () => {
@@ -202,8 +215,16 @@ class Round extends Component {
     this.setState({ outcomesWinShare: outcomesWinShare })
   }
 
-  handleSelect = () => {
-    console.log('handleSelect')
+  handleSelect = (e) => {
+    this.setState({ selectedOutcome: Number(e.target.value) })
+  }
+
+  handleBetChange = (e) => {
+    const inputBet = Number(e.target.value)
+    this.setState({
+      inputBet: inputBet,
+      inputBetFiat: inputBet * this.state.ethFiatRate
+    })
   }
 
   handleOutcomeStatsToggle = () => {
@@ -271,11 +292,21 @@ class Round extends Component {
           statsSum={this.state.areOutcomeStatsToggled
             ? this.state.outcomesBetNum.reduce((a, b) => a + b, 0)
             : this.state.outcomesBetPool.reduce((a, b) => a + b, 0)}
-          selectedOutcome={this.state.selectedOutcome}
+          selectedIndex={this.state.selectedOutcome}
           handleSelect={this.handleSelect} />
        
+
+        <BetNumberInput
+          min="0"
+          max="1000"
+          step="0.001"
+          placeholder="0"
+          unit={StringUtils.formatFiatWithCurrency(this.state.inputBetFiat)}
+          onChange={this.handleBetChange}
+          value={this.state.inputBet} />
+
         <ButtonPrimary>
-          Vote
+          Betl!
         </ButtonPrimary>
 
         <RoundFee
@@ -283,6 +314,28 @@ class Round extends Component {
       </div>
     )
   }
+}
+
+const BetNumberInput = ({ min, max, step, placeholder, unit, onChange, value }) => {
+  return (
+    <div className="field has-addons">
+      <p className="control is-expanded">
+        <InputNumber
+          value={value}
+          placeholder={placeholder}
+          onChange={onChange}
+          min={min}
+          max={max}
+          step={step}
+        />
+      </p>
+      <p className="control">
+        <a className="button is-large is-static">
+          {unit}
+        </a>
+      </p>
+    </div>
+  )
 }
 
 const RoundInvalid = () => {
