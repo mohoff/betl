@@ -23,7 +23,7 @@ export const RoundOutcomesWithStats = ({ status, numOutcomes, outcomes, winShare
             status={status}
             index={i}
             isPicked={isHostPicked}
-            isSelected={isUserSelected}
+            isUserSelected={isUserSelected}
             winShare={winShares[i]}
             handleSelect={handleSelect} />
           <OutcomeText
