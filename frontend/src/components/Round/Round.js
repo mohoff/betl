@@ -2,7 +2,10 @@ import React, { Component } from 'react'
 
 import { Web3Context } from '../Web3Wrapper'
 
-import { RoundStatus } from './RoundStatus'
+import { 
+  RoundStatus,
+  OPEN
+} from './RoundStatus'
 import { RoundOutcomesWithStats } from './RoundOutcomesWithStats'
 import { RoundStats } from './RoundStats'
 import { RoundHost } from './RoundHost'
@@ -26,6 +29,8 @@ import './Round.scss'
 class Round extends Component {
   constructor(props) {
   	super(props)
+    this.pollingInterval = null
+
     this.state = {
       hostId: props.match.params.hostId.toLowerCase(),
       // contract expects byte parameters to be prefixed with '0x'
@@ -62,7 +67,6 @@ class Round extends Component {
 
   componentDidMount = async () => {
     this.getEthFiatRate()
-    console.log(navigator.language)
 
     if(this.props.isAddress(this.state.hostId)) {
       this.setState({ hostAddress: this.state.hostId })
@@ -77,6 +81,10 @@ class Round extends Component {
     this.getRound(this.state.hostAddress, this.state.roundId)
   }
 
+  componentWillUnmount = () => {
+    clearInterval(this.pollingInterval)
+  }
+
   getEthFiatRate = async () => {
     fetch(process.env.REACT_APP_ETH_PRICE_API)
     .then(response => response.json())
@@ -86,16 +94,28 @@ class Round extends Component {
     })
   }
 
-  getRound = async(hostAddress, roundId) => {
-    const status = await this.getRoundInfo(hostAddress, roundId)
-    if (status > 0 && status <= 8) {
+  getRound = async (hostAddress, roundId) => {
+    this.getRoundInfo(hostAddress, roundId).then(async (status) => {
       await this.getRoundOutcomes(hostAddress, roundId)
-      //await this.getRoundOutcomePools(hostAddress, roundId)
-      //await this.getRoundOutcomeNumBets(hostAddress, roundId)
-      //await this.getMyRoundOutcomeBet(hostAddress, roundId)
-      //await this.getRoundOutcomeWinShare(hostAddress, roundId)
-    }
+      this.getRoundOutcomeWinShare(hostAddress, roundId)
+      this.getMyRoundOutcomeBet(hostAddress, roundId)
+      this.startPollingRoundDetails(hostAddress, roundId)
+    }).catch(err => {
+      // Error on UI is output by `render()`
+      console.error('Failed to fetch Bet')
+    })
     console.log(this.state)
+  }
+
+  startPollingRoundDetails = (hostAddress, roundId) => {
+    // Periodically fetch round data that can be changed by other users
+    this.pollingInterval = setInterval(() => {
+      console.info('...Updating Round')
+
+      this.getRoundInfo(hostAddress, roundId)
+      this.getRoundOutcomePools(hostAddress, roundId)
+      this.getRoundOutcomeNumBets(hostAddress, roundId)
+    }, Number(process.env.REACT_APP_POLLING_INTERVAL_MS_BET))
   }
 
   getRoundInfo = async () => {
@@ -104,7 +124,7 @@ class Round extends Component {
         let [status, createdAt, endedAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee] = r
         if (Number(status) === 0) reject()
 
-        console.log('Success: getRoundInfo for roundId: ' + this.state.roundId)
+        //console.log('Fetched Bet with id: ' + this.state.roundId)
         this.setState({
           status: Number(status),
           createdAt: Number(createdAt),
@@ -195,7 +215,6 @@ class Round extends Component {
     })
     const outcomesMyBet = await Promise.all(promises)
     this.setState({ outcomesMyBet: outcomesMyBet })
-    console.log(this.state)
   }
 
   getRoundOutcomeWinShare = async () => {
@@ -250,6 +269,7 @@ class Round extends Component {
     if (this.state.status === 0) {
       return <RoundNotFound />
     }
+
     return (
       <div>
         <RoundHost
@@ -296,42 +316,54 @@ class Round extends Component {
           handleSelect={this.handleSelect} />
        
 
-        <BetNumberInput
-          min="0"
-          max="1000"
-          step="0.001"
-          placeholder="0"
-          unit={StringUtils.formatFiatWithCurrency(this.state.inputBetFiat)}
-          onChange={this.handleBetChange}
-          value={this.state.inputBet} />
+        { // Special case: Render action controls below outcomes in case Round is in RoundStatus.OPEN
+          this.state.status === OPEN &&
 
-        <ButtonPrimary>
-          Betl!
-        </ButtonPrimary>
+          <RoundStatusOpenBottom>
+            <BetNumberInput
+              min="0"
+              step="0.001"
+              fiat={StringUtils.formatFiatWithCurrency(this.state.inputBetFiat)}
+              onChange={this.handleBetChange}
+              value={this.state.inputBet} />
 
-        <RoundFee
-          fee={this.state.hostFee} />
+            <ButtonPrimary className="is-fullwidth">
+              Betl!
+            </ButtonPrimary>
+
+            <RoundFee
+              fee={this.state.hostFee} />
+          </RoundStatusOpenBottom>
+        }
       </div>
     )
   }
 }
 
-const BetNumberInput = ({ min, max, step, placeholder, unit, onChange, value }) => {
+const RoundStatusOpenBottom = ({ children }) => {
+  return (
+    <div className="columns is-mobile round-open-bottom">
+      <div className="column is-8 is-offset-2">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+const BetNumberInput = ({ min, step, fiat, onChange, value }) => {
   return (
     <div className="field has-addons">
       <p className="control is-expanded">
         <InputNumber
           value={value}
-          placeholder={placeholder}
           onChange={onChange}
           min={min}
-          max={max}
           step={step}
         />
       </p>
       <p className="control">
-        <a className="button is-large is-static">
-          {unit}
+        <a className="button is-monospace is-large is-static fiat">
+          {fiat}
         </a>
       </p>
     </div>

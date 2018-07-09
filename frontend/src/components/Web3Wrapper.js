@@ -36,6 +36,10 @@ class Web3Wrapper extends Component {
     this.startPollingMetamaskStatus()
   }
 
+  componentWillUnmount = () => {
+    clearInterval(this.pollingInterval)
+  }
+
   initWeb3 = () => {
     return new Promise((resolve, reject) => {
       if (typeof window.web3 !== 'undefined') {
@@ -70,7 +74,7 @@ class Web3Wrapper extends Component {
     if (!this.pollingInterval) {
       this.pollingInterval = setInterval(
         this.updateMetamaskStatus,
-        process.env.REACT_APP_METAMASK_POLLING_INTERVAL_MS
+        Number(process.env.REACT_APP_POLLING_INTERVAL_MS_METAMASK)
       )
     }
   }

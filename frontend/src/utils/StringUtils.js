@@ -60,10 +60,10 @@ export const formatFiat = (fiat, isEUR=false) => {
 export const formatFiatWithCurrency = (fiat) => {
   const currency = process.env.REACT_APP_FIAT_CURRENCY
   if (currency === 'EUR') {
-    return '~' + formatFiat(fiat, true) + ' ' + fiatToSymbol(currency)
+    return '~' + formatFiat(fiat, true) + fiatToSymbol(currency)
   }
   if (currency === 'USD') {
-    return '~ ' + fiatToSymbol(currency) + formatFiat(fiat)
+    return '~' + fiatToSymbol(currency) + formatFiat(fiat)
   }
   return null
 }

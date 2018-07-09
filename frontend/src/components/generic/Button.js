@@ -33,10 +33,10 @@ export const Button = ({ isLoading, isDisabled, onClick, className, children, ..
   )
 }
 
-export const ButtonPrimary = (props) => {
+export const ButtonPrimary = ({ className, ...other }) => {
   return (
     <div className="control has-text-centered">
-      <Button {...props} className="is-primary is-outlined" />
+      <Button {...other} className={'is-primary is-outlined ' + className} />
     </div>
   )
 }
