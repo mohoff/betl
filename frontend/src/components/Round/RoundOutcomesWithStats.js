@@ -13,7 +13,8 @@ export const RoundOutcomesWithStats = ({ status, numOutcomes, outcomes, winShare
   const isDecided = status === 4
 
   for (let i=0; i<numOutcomes; i++) {
-    const isPicked = false //winShares[i] > 0
+    const isHostPicked = winShares[i] > 0
+    const isUserSelected = selectedIndex === i
 
     outcomesArray.push(
       <div key={String(i+1)} className="field">    
@@ -21,18 +22,18 @@ export const RoundOutcomesWithStats = ({ status, numOutcomes, outcomes, winShare
           <OutcomeLeft
             status={status}
             index={i}
-            isPicked={isPicked}
-            isSelected={selectedIndex === i}
+            isPicked={isHostPicked}
+            isSelected={isUserSelected}
             winShare={winShares[i]}
             handleSelect={handleSelect} />
           <OutcomeText
-            isPicked={isPicked}
+            isPicked={isHostPicked}
             isBetDecided={isDecided}>
             {outcomes[i]}
           </OutcomeText>
           <OutcomeRight
             index={i}
-            isPicked={isDecided && isPicked}
+            isPicked={isDecided && isHostPicked}
             value={stats[i]}
             maxValue={statsSum} />
         </OutcomeContainer>
@@ -43,13 +44,13 @@ export const RoundOutcomesWithStats = ({ status, numOutcomes, outcomes, winShare
   return outcomesArray
 }
 
-const OutcomeLeft = ({ status, index, isPicked, isSelected, winShare, handleSelect }) => {
+const OutcomeLeft = ({ status, index, isHostPicked, isUserSelected, winShare, handleSelect }) => {
   switch (status) {
     case 1:
       return (
         <Fragment>
-          <i className={'fas ' + (isPicked ? 'fa-check has-text-primary' : 'fa-times has-text-grey-light')}></i>
-          {isPicked && 
+          <i className={'fas ' + (isHostPicked ? 'fa-check has-text-primary' : 'fa-times has-text-grey-light')}></i>
+          {isHostPicked && 
             <div className="is-absolute is-monospace has-text-primary is-size-6 is-bold winshare">
               {winShare}%
             </div>
@@ -61,17 +62,17 @@ const OutcomeLeft = ({ status, index, isPicked, isSelected, winShare, handleSele
         <Select
           value={index}
           onChange={handleSelect}
-          isSelected={isSelected} />
+          isSelected={isUserSelected} />
       )
     default:
       return null
   }
 }
 
-const OutcomeText = ({ children, isPicked, isBetDecided }) => {
+const OutcomeText = ({ children, isHostPicked, isBetDecided }) => {
   let extraStyle
   if (isBetDecided) {
-    extraStyle = isPicked
+    extraStyle = isHostPicked
       ? 'is-bold'
       : 'is-striked-through'
   }
@@ -83,18 +84,20 @@ const OutcomeText = ({ children, isPicked, isBetDecided }) => {
     : null  
 }
 
-const OutcomeRight = ({ index, isPicked, value, maxValue }) => {
+const OutcomeRight = ({ index, isHostPicked, value, maxValue }) => {
   return (
     <Fragment>
       <OutcomeRightStatBar value={value} maxValue={maxValue} />
-      <OutcomeRightStatNumber value={value} isPicked={isPicked} />
+      <OutcomeRightStatNumber value={value} isPicked={isHostPicked} />
     </Fragment>
   )
 }
 
 const OutcomeRightStatBar = ({ value, maxValue }) => {
   const width = {
-    width: (value/maxValue)*100 + '%'
+    width: maxValue > 0
+      ? (value/maxValue)*100 + '%'
+      : 0 + '%'
   }
 
   return <div style={width} className="stats-bars"></div>
