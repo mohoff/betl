@@ -1,6 +1,7 @@
 TODO
 ====
 
+
 Smart contract
 --------------
 - Make sure that only one round is created per blocktime to avoid shadow/dup rounds.
