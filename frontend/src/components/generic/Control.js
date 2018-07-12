@@ -20,7 +20,7 @@ export const ToggleElement = ({ active, handleClick, children }) => {
   return (
     <p>
       <a className={(active ? 'has-text-grey' : 'has-text-grey-light') + ' is-unselectable'}
-        onClick={() => { active ? null : handleClick() }}>
+        onClick={() => { return active ? null : handleClick() }}>
         {children}
       </a>
     </p>

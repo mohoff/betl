@@ -17,13 +17,13 @@ import {
   ToggleText,
   ButtonPrimary,
   InputNumber,
+  ActionResult,
   ErrorPage
 } from '../generic'
 
 import * as StringUtils from '../../utils/StringUtils'
 
 import './Round.scss'
-
 
 
 class Round extends Component {
@@ -36,9 +36,11 @@ class Round extends Component {
       // contract expects byte parameters to be prefixed with '0x'
       roundId: '0x' + props.match.params.roundId.toLowerCase(),
 
+      // Host data
       hostAddress: null,
       hostName: null,
 
+      // Round data
       status: null,
       createdAt: 0,
       endedAt: 0,
@@ -55,12 +57,15 @@ class Round extends Component {
       outcomesMyBet: [500000000000000, 0, 5000000],
       outcomesWinShare: [0, 10, 90],
 
+      // UI controls
       selectedOutcome: null,
       inputBet: 0,
       inputBetFiat: 0,
+      isBetLoading: false,
+      betResultText: '',
+      betSuccess: null,
       areOutcomeStatsToggled: false,
       arePoolUnitsToggled: false,
-
       ethFiatRate: 0
     }
   }
@@ -99,23 +104,31 @@ class Round extends Component {
       await this.getRoundOutcomes(hostAddress, roundId)
       this.getRoundOutcomeWinShare(hostAddress, roundId)
       this.getMyRoundOutcomeBet(hostAddress, roundId)
-      this.startPollingRoundDetails(hostAddress, roundId)
+      this.startPollingRoundUpdates(hostAddress, roundId)
     }).catch(err => {
-      // Error on UI is output by `render()`
+      // `render()` takes care of displaying an error message
       console.error('Failed to fetch Bet')
+    }).finally(() => {
+      console.log(this.state)  
     })
-    console.log(this.state)
   }
 
-  startPollingRoundDetails = (hostAddress, roundId) => {
+  startPollingRoundUpdates = (hostAddress, roundId) => {
     // Periodically fetch round data that can be changed by other users
     this.pollingInterval = setInterval(() => {
-      console.info('...Updating Round')
-
-      this.getRoundInfo(hostAddress, roundId)
-      this.getRoundOutcomePools(hostAddress, roundId)
-      this.getRoundOutcomeNumBets(hostAddress, roundId)
+      this.updateRound(hostAddress, roundId)
     }, Number(process.env.REACT_APP_POLLING_INTERVAL_MS_BET))
+  }
+
+  updateRound = () => {
+    const hostAddress = this.state.hostAddress
+    const roundId = this.state.roundId
+
+    console.info('...Updating Round')
+
+    this.getRoundInfo(hostAddress, roundId)
+    this.getRoundOutcomePools(hostAddress, roundId)
+    this.getRoundOutcomeNumBets(hostAddress, roundId)
   }
 
   getRoundInfo = async () => {
@@ -166,15 +179,14 @@ class Round extends Component {
 
   getRoundOutcomePools = async () => {
     let promises = Array(this.state.numOutcomes).fill().map((_, i) => {
-      const outcomeId = this.getOutcomeId(this.state.outcomes[i])
       return new Promise((resolve, reject) => {
         this.props.betl.getRoundOutcomePool(
           this.state.hostId,
           this.state.roundId,
-          outcomeId
+          i
         ).then(wei => {
           const ether = this.props.web3.utils.fromWei(String(wei))
-          resolve(ether)
+          resolve(Number(ether))
         })
       })
     })
@@ -184,12 +196,11 @@ class Round extends Component {
 
   getRoundOutcomeNumBets = async () => {
     let promises = Array(this.state.numOutcomes).fill().map((_, i) => {
-      const outcomeId = this.getOutcomeId(this.state.outcomes[i])
       return new Promise((resolve, reject) => {
         this.props.betl.getRoundOutcomeNumBets(
           this.state.hostId,
           this.state.roundId,
-          outcomeId
+          i
         ).then(r => {
           resolve(Number(r))
         })
@@ -201,15 +212,14 @@ class Round extends Component {
 
   getMyRoundOutcomeBet = async () => {
     let promises = Array(this.state.numOutcomes).fill().map((_, i) => {
-      const outcomeId = this.getOutcomeId(this.state.outcomes[i])
       return new Promise((resolve, reject) => {
         this.props.betl.getMyRoundOutcomeBet(
           this.state.hostId,
           this.state.roundId,
-          outcomeId
+          i
         ).then(wei => {
           const ether = this.props.web3.utils.fromWei(String(wei))
-          resolve(ether)
+          resolve(Number(ether))
         })
       })
     })
@@ -219,12 +229,11 @@ class Round extends Component {
 
   getRoundOutcomeWinShare = async () => {
     let promises = Array(this.state.numOutcomes).fill().map((_, i) => {
-      const outcomeId = this.getOutcomeId(this.state.outcomes[i])
       return new Promise((resolve, reject) => {
         this.props.betl.getRoundOutcomeWinShare(
           this.state.hostId,
           this.state.roundId,
-          outcomeId
+          i
         ).then(winShare => {
           resolve(Number(winShare))
         })
@@ -236,6 +245,7 @@ class Round extends Component {
 
   handleSelect = (e) => {
     this.setState({ selectedOutcome: Number(e.target.value) })
+    console.log(this.state.outcomesBetPool, this.state.outcomesBetNum)
   }
 
   handleBetChange = (e) => {
@@ -244,6 +254,44 @@ class Round extends Component {
       inputBet: inputBet,
       inputBetFiat: inputBet * this.state.ethFiatRate
     })
+  }
+
+  handleBet = () => {
+    this.setState({ isBetLoading: true })
+
+    // Input validation
+    if (this.state.selectedOutcome === null || this.state.selectedOutcome >= this.state.outcomes.length) {
+      this.showBetResult('Please select a valid outcome', false)
+    }
+    if (!this.state.inputBet) {
+      this.showBetResult('Please enter a valid bet amount', false)
+    }
+
+    // Place bet via transaction
+    const betAmount = this.props.web3.utils.toWei(String(this.state.inputBet))
+    this.props.betl.bet(
+      this.state.hostAddress,
+      this.state.roundId,
+      this.state.selectedOutcome,
+      this.props.getOptions(betAmount)
+    ).then(result => {
+      this.updateRound()
+      this.showBetResult('Successfully placed bet!', true)
+    }).catch(err => {
+      this.showBetResult('Transaction failed!', false, err)
+    }).finally(() => {
+      this.setState({ isBetLoading: false })
+    })
+  }
+
+  showBetResult = (message, isSuccess, error) => {
+    isSuccess
+      ? console.log('Success! ' + message)
+      : console.error('Error! ' + message, error)
+   
+    isSuccess
+      ? this.setState({ betResultText: message, betSuccess: true })
+      : this.setState({ betResultText: message, betSuccess: false })
   }
 
   handleOutcomeStatsToggle = () => {
@@ -327,9 +375,18 @@ class Round extends Component {
               onChange={this.handleBetChange}
               value={this.state.inputBet} />
 
-            <ButtonPrimary className="is-fullwidth">
+            <ButtonPrimary
+              isLoading={this.state.isBetLoading}
+              isDisabled={this.state.selectedOutcome === null || !this.state.inputBet}
+              onClick={this.handleBet}
+              className="is-fullwidth">
               Betl!
             </ButtonPrimary>
+
+            <ActionResult
+              isSuccess={this.state.betSuccess}>
+              {this.state.betResultText}
+            </ActionResult>
 
             <RoundFee
               fee={this.state.hostFee} />

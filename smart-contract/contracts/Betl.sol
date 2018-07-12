@@ -31,7 +31,6 @@ contract Betl is Ownable {
 
   struct Outcomes {
     bytes32[] outcomes;
-    mapping(bytes32 => bool) lookup;
     // Specifies payout distributions in case multiple winners are possible
     // Example: When there are 3 winners, this array can be [60, 30, 10] ==> in percents, must sum to 100.
     // winnerTiers.length <= numOutcomes
@@ -41,8 +40,8 @@ contract Betl is Ownable {
 
   struct Results {
     uint[] payouts;
-    //    hash(opt) => winShare [0-100]
-    mapping(bytes32 => uint) outcomeWinShares;
+    // outcomeIndex => winShare [0-100]
+    mapping(uint => uint) outcomeWinShares;
   }
 
   struct Stats {
@@ -64,11 +63,11 @@ contract Betl is Ownable {
     Outcomes outcomes;
     Results results;
     Stats stats;
-    //    hash(opt) =>         player  => bet
-    mapping(bytes32 => mapping(address => uint)) playerBets;
-    //    hash(opt) => totalBets
-    mapping(bytes32 => uint) outcomePools;
-    mapping(bytes32 => uint) outcomeNumBets;
+    // outcomeIndex =>         player  => bet
+    mapping(uint => mapping(address => uint)) playerBets;
+    // outcomeIndex => totalBets
+    mapping(uint => uint) outcomePools;
+    mapping(uint => uint) outcomeNumBets;
   }
 
   struct HostContext {
@@ -181,17 +180,17 @@ contract Betl is Ownable {
     emit RoundCreated(msg.sender, roundId);
   }
 
-  function bet(address _host, bytes4 _roundId, bytes32 _outcomeId) external payable {
+  function bet(address _host, bytes4 _roundId, uint _outcomeIndex) external payable {
     Round storage r = getRound(_host, _roundId);
     require(r.status == Status.OPEN);
 
-    require(msg.value >= r.minBet);
-    require(r.outcomes.lookup[_outcomeId] == true);
-    require(now < r.timeoutAt);
+    require(msg.value > 0 && msg.value >= r.minBet);
+    require(r.outcomes.outcomes[_outcomeIndex] != bytes32(0));
+    require(r.timeoutAt == 0 || now < r.timeoutAt);
   
-    r.playerBets[_outcomeId][msg.sender] = r.playerBets[_outcomeId][msg.sender].add(msg.value);
-    r.outcomePools[_outcomeId] = r.outcomePools[_outcomeId].add(msg.value);
-    r.outcomeNumBets[_outcomeId] += 1;
+    r.playerBets[_outcomeIndex][msg.sender] = r.playerBets[_outcomeIndex][msg.sender].add(msg.value);
+    r.outcomePools[_outcomeIndex] = r.outcomePools[_outcomeIndex].add(msg.value);
+    r.outcomeNumBets[_outcomeIndex] = r.outcomeNumBets[_outcomeIndex].add(1);
   } 
 
   function pickWinnerAndEnd(uint[] _picks, bytes4 _roundId) external payable {
@@ -212,7 +211,6 @@ contract Betl is Ownable {
 
     for (uint i=0; i<_picks.length; i++) {
       uint outcomeShare = _picks[i];
-      bytes32 outcomeId = getOutcomeId(r, i);
 
       if(outcomeShare == 0) continue;
 
@@ -220,13 +218,13 @@ contract Betl is Ownable {
       allShares += outcomeShare;
 
       // populate lookup to simplify getter function `getRoundOutcomeWinShare`
-      r.results.outcomeWinShares[outcomeId] = outcomeShare;
+      r.results.outcomeWinShares[i] = outcomeShare;
 
       // distribute round pool
       r.results.payouts[i] = remainingPool.mul(outcomeShare).div(100);
 
-      numBets = numBets.add(r.outcomeNumBets[outcomeId]);
-      poolSize = poolSize.add(r.outcomePools[outcomeId]);
+      numBets = numBets.add(r.outcomeNumBets[i]);
+      poolSize = poolSize.add(r.outcomePools[i]);
     }
     require(allShares == 100);
 
@@ -263,17 +261,16 @@ contract Betl is Ownable {
     uint myPayout;
 
     for (uint i=0; i<r.outcomes.outcomes.length; i++) {
-      bytes32 outcomeId = getOutcomeId(r, i);
-      uint outcomeShare = r.results.outcomeWinShares[outcomeId];
+      uint outcomeShare = r.results.outcomeWinShares[i];
 
       if (outcomeShare == 0) {
         continue;
       }
    
       uint myOutcomePayout = getMyPayoutForOutcome(
-          r.playerBets[outcomeId][msg.sender],
+          r.playerBets[i][msg.sender],
           outcomeShare,
-          r.outcomePools[outcomeId],
+          r.outcomePools[i],
           r.stats.poolSize
       );
 
@@ -281,7 +278,7 @@ contract Betl is Ownable {
         myPayout = myPayout.add(myOutcomePayout);
 
         // Reset player bets so that they can't be claimed again
-        r.playerBets[outcomeId][msg.sender] = 0;
+        r.playerBets[i][msg.sender] = 0;
       }
 
       // Minor optimization that skips iterations in case an outcome got picked as only
@@ -302,9 +299,8 @@ contract Betl is Ownable {
     uint myRefund;
 
     for(uint i=0; i<r.outcomes.outcomes.length; i++) {
-      bytes32 outcomeId = getOutcomeId(r, i);
-      myRefund = myRefund.add(r.playerBets[outcomeId][msg.sender]);
-      r.playerBets[outcomeId][msg.sender] = 0;
+      myRefund = myRefund.add(r.playerBets[i][msg.sender]);
+      r.playerBets[i][msg.sender] = 0;
     }
 
     require(myRefund > 0);
@@ -363,52 +359,52 @@ contract Betl is Ownable {
     );
   }
 
-  function getRoundOutcomeByName(bytes32 _hostName, bytes4 _roundId, uint _index) external view returns (bytes32) {
+  function getRoundOutcomeByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (bytes32) {
     require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getRoundOutcome(hostAddresses[_hostName], _roundId, _index);
+    return getRoundOutcome(hostAddresses[_hostName], _roundId, _outcomeIndex);
   }
   
-  function getRoundOutcome(address _host, bytes4 _roundId, uint _index) public view roundExists(_host, _roundId) returns (bytes32) {
+  function getRoundOutcome(address _host, bytes4 _roundId, uint _outcomeIndex) public view roundExists(_host, _roundId) returns (bytes32) {
     Round storage r = getRound(_host, _roundId);
-    require(_index < r.outcomes.outcomes.length);
-    return r.outcomes.outcomes[_index];
+    require(_outcomeIndex < r.outcomes.outcomes.length);
+    return r.outcomes.outcomes[_outcomeIndex];
   }
 
-  function getRoundOutcomePoolByName(bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+  function getRoundOutcomePoolByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
     require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getRoundOutcomePool(hostAddresses[_hostName], _roundId, _outcomeHash);
+    return getRoundOutcomePool(hostAddresses[_hostName], _roundId, _outcomeIndex);
   }
   
-  function getRoundOutcomePool(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
-    return rounds[_host][_roundId].outcomePools[_outcomeHash];
+  function getRoundOutcomePool(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
+    return rounds[_host][_roundId].outcomePools[_outcomeIndex];
   }
 
-  function getRoundOutcomeNumBetsByName(bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+  function getRoundOutcomeNumBetsByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
     require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getRoundOutcomeNumBets(hostAddresses[_hostName], _roundId, _outcomeHash);
+    return getRoundOutcomeNumBets(hostAddresses[_hostName], _roundId, _outcomeIndex);
   }
   
-  function getRoundOutcomeNumBets(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
-    return rounds[_host][_roundId].outcomeNumBets[_outcomeHash];
+  function getRoundOutcomeNumBets(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
+    return rounds[_host][_roundId].outcomeNumBets[_outcomeIndex];
   }
 
-  function getMyRoundOutcomeBetByName(bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+  function getMyRoundOutcomeBetByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
     require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getMyRoundOutcomeBet(hostAddresses[_hostName], _roundId, _outcomeHash);
+    return getMyRoundOutcomeBet(hostAddresses[_hostName], _roundId, _outcomeIndex);
   }
   
-  function getMyRoundOutcomeBet(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
+  function getMyRoundOutcomeBet(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
     Round storage r = getRound(_host, _roundId);
-    return r.playerBets[_outcomeHash][msg.sender];
+    return r.playerBets[_outcomeIndex][msg.sender];
   }
 
-  function getRoundOutcomeWinShareByName(bytes32 _hostName, bytes4 _roundId, bytes32 _outcomeHash) external view returns (uint) {
+  function getRoundOutcomeWinShareByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
     require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getRoundOutcomeWinShare(hostAddresses[_hostName], _roundId, _outcomeHash);
+    return getRoundOutcomeWinShare(hostAddresses[_hostName], _roundId, _outcomeIndex);
   }
   
-  function getRoundOutcomeWinShare(address _host, bytes4 _roundId, bytes32 _outcomeHash) public view returns (uint) {
-    return rounds[_host][_roundId].results.outcomeWinShares[_outcomeHash];
+  function getRoundOutcomeWinShare(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
+    return rounds[_host][_roundId].results.outcomeWinShares[_outcomeIndex];
   }
 
   //                                          numRoundsCreated, numRoundsCancelled, numBets, poolSize

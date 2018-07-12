@@ -233,11 +233,12 @@ class Web3Wrapper extends Component {
     }
   }
 
-  getOptions = (txName) => {
+  getOptions = (value=0) => {
     return {
       from: this.state.userAddress,
-      gas: this.getGas(txName),
-      gasPrice: this.getGasPrice(txName)
+      value: value,
+      gas: this.getGas(),
+      gasPrice: this.getGasPrice()
     }
   }
 
