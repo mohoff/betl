@@ -398,7 +398,7 @@ class Round extends Component {
 
             <ButtonPrimary
               isLoading={this.state.isBetLoading}
-              isDisabled={this.state.selectedOutcome === null || !this.state.inputBet}
+              isDisabled={this.state.selectedOutcome === null || !this.state.inputBet || this.state.isBetLoading}
               onClick={this.handleBet}
               className="is-fullwidth">
               Betl!

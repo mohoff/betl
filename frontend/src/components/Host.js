@@ -1,4 +1,6 @@
 import React, { Component } from 'react'
+import { Link } from 'react-router-dom'
+
 import { Web3Context } from './Web3Wrapper'
 import {
   HeadingSection,
@@ -18,6 +20,7 @@ class Host extends Component {
       hostId: props.match.params.hostId,
       hostName: '',
       hostAddress: '',
+      nextRoundNumber: 0,
       rounds: [],
       
       stats: {
@@ -36,24 +39,29 @@ class Host extends Component {
   }
 
   componentDidMount = async () => {
-    let hostAddress, hostName
-    if (this.props.isAddress(this.state.hostId)) {
-      hostAddress = this.state.hostId
-      hostName = await this.props.getUserName(hostAddress)
+    if(this.props.isAddress(this.state.hostId)) {
+      this.setState({ hostAddress: this.state.hostId })
+      this.props.getUserName(this.state.hostId).then(hostName => {
+        this.setState({ hostName: hostName })
+      })
     } else {
-      hostName = this.state.hostId
-      hostAddress = await this.props.getUserAddress(hostName)
+      this.setState({ hostName: this.state.hostId })
+      const hostAddress = await this.props.getUserAddress(this.state.hostId)
+      this.setState({ hostAddress: hostAddress })
     }
-    this.setState({
-      hostAddress: hostAddress.toLowerCase(),
-      hostName: hostName
-    })
-
-    // TODO: if (hostAddress !== '') { try fetch round(s) for this host }
   }
 
-  handleRefresh = () => {
+  getNextRoundNumber = () => {
+    this.props.betl.getNextRoundNumber(this.getOptions()).then(r => {
+      this.setState({ nextRoundNumber: Number(r) })
+    }).catch(err => {
+      console.error('Failed to fetch next round number! ', err)
+    })
+  }
+
+  handleMore = () => {
     // async fetch again host rounds.
+    // TODO: refresh automatically, without button
   }
 
   handleLinkNameChange = (event) => {
@@ -139,20 +147,25 @@ class Host extends Component {
         
         {getWelcome()}
       
-        <HeadingSection>Open Rounds</HeadingSection>
-        <Rounds rounds={this.state.rounds} />
-        <ButtonPrimary
-          isLoading={this.isLoading}
-          isDisabled={this.isLoading}
-          onClick={this.handleRefresh}>
-            Refresh
-        </ButtonPrimary>
-    
         <HeadingSection>Stats</HeadingSection>
-        <Stats stats={this.state.stats} />
-  
+        <Stats
+          stats={this.state.stats} />
+
+        <HeadingSection>Bets</HeadingSection>
+        <Rounds
+          rounds={this.state.rounds}
+          numExistingRounds={this.state.nextRoundNumber} />
+        
+        {this.state.rounds.length < this.state.nextRoundNumber &&
+          <ButtonPrimary
+            isLoading={this.isLoading}
+            isDisabled={this.isLoading}
+            onClick={this.handleMore}>
+              More
+          </ButtonPrimary>
+        }
       </div>
-    );
+    )
   }
 }
 
@@ -166,27 +179,41 @@ const HostName = ({ children }) => {
 }
 
 const NoRounds = () => {
-  return <div className="is-italic has-text-grey-light no-entries">Host has no bet rounds</div>
+  return <div className="is-italic has-text-grey-light no-entries has-text-centered">Host has no bet rounds</div>
 }
 
-const Rounds = ({ rounds }) => {
-  const getRounds = () => {
-    let roundsArray = []
-    for (let i=0; i<rounds.length; i++) {
-      roundsArray.push(
-        <div key={i}>round {i}</div>
-      )
+const Rounds = ({ rounds, numExistingRounds, hostId }) => {
+  hostId = 'moo'
+  rounds = [
+    {
+      id: 'deadbeef1234',
+      createdAt: 1234454545,
+      endedAt: 1534234344,
+      question: 'Helloooo?',
+      poolSize: 5788873,
+      numBets: 145
     }
-    return roundsArray
+  ]
+
+  if (!rounds || rounds.length === 0) {
+    return <NoRounds />
   }
 
   return (
-    <div className="has-text-centered">
-      {(rounds.length === 0) 
-        ? <NoRounds />
-        : getRounds()
-      }
-    </div>
+    rounds.map((round, i) => {
+      const roundLink = '/' + hostId + '/' + round.id
+      return (
+        <Link key={i} to={roundLink}>
+          <div className="">
+            {round.createdAt}<br />
+            {round.endedAt}<br />
+            {round.question}<br />
+            {round.poolSize}<br />
+            {round.numBets}<br />
+          </div>
+        </Link>
+      )
+    })
   )
 }
 

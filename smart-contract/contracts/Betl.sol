@@ -101,12 +101,10 @@ contract Betl is Ownable {
     return r;
   }
 
-  // function getRoundId(address _host) public view returns (bytes4) {
-  //   uint nextRoundNumber = getNextRoundNumber(_host);
-  //   require(nextRoundNumber > 0);
-  //   bytes32 hash = keccak256(abi.encodePacked(_host, nextRoundNumber-1));
-  //   return bytes4(hash);
-  // }
+  // Frontend helper
+  function getNextRoundNumber(address _host) external view returns (uint) {
+    return hostContext[_host].nextRoundNumber
+  }
 
   // Frontend needs to fetch roundId of created round.
   function getNextRoundId(address _host) public view returns (bytes4) {

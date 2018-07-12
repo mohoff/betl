@@ -110,8 +110,9 @@ class Create extends Component {
   }
 
   handleCreate = async (event) => {
-    console.log('Create button pressed')
     this.setState({ isCreateLoading: true })
+    
+    console.log('Create button pressed')
     
     const questionHex = this.props.web3.utils.utf8ToHex(this.state.question)
     const outcomesHex = this.state.outcomes.map(o => this.props.web3.utils.utf8ToHex(o))
