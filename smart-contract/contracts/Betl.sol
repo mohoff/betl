@@ -191,6 +191,8 @@ contract Betl is Ownable {
     r.playerBets[_outcomeIndex][msg.sender] = r.playerBets[_outcomeIndex][msg.sender].add(msg.value);
     r.outcomePools[_outcomeIndex] = r.outcomePools[_outcomeIndex].add(msg.value);
     r.outcomeNumBets[_outcomeIndex] = r.outcomeNumBets[_outcomeIndex].add(1);
+    r.stats.numBets = r.stats.numBets.add(1);
+    r.stats.poolSize = r.stats.poolSize.add(msg.value);
   } 
 
   function pickWinnerAndEnd(uint[] _picks, bytes4 _roundId) external payable {
@@ -206,8 +208,6 @@ contract Betl is Ownable {
     remainingPool = remainingPool - hostFee;
 
     uint allShares;
-    uint numBets;
-    uint poolSize;
 
     for (uint i=0; i<_picks.length; i++) {
       uint outcomeShare = _picks[i];
@@ -222,14 +222,9 @@ contract Betl is Ownable {
 
       // distribute round pool
       r.results.payouts[i] = remainingPool.mul(outcomeShare).div(100);
-
-      numBets = numBets.add(r.outcomeNumBets[i]);
-      poolSize = poolSize.add(r.outcomePools[i]);
     }
     require(allShares == 100);
 
-    r.stats.numBets = numBets;
-    r.stats.poolSize = poolSize.add(msg.value);
     hostContext[msg.sender].totalNumBets += r.stats.numBets;
     hostContext[msg.sender].totalPoolSize += r.stats.poolSize;
     hostContext[msg.sender].numRoundsSuccess += 1;
@@ -356,6 +351,21 @@ contract Betl is Ownable {
       r.stats.poolSize,
       r.hostBonus,
       r.hostFee
+    );
+  }
+
+  // Convenience function for the client to only fetch fields that can be
+  // updated in the lifecycle of a Round
+  function getRoundInfoChanges(address _host, bytes4 _roundId) public view roundExists(_host, _roundId)
+    returns (uint, uint, uint, uint)
+  {
+    Round storage r = getRound(_host, _roundId);
+
+    return (
+      uint256(r.status),
+      r.endedAt,
+      r.stats.numBets,
+      r.stats.poolSize
     );
   }
 

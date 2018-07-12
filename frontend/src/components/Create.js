@@ -112,13 +112,18 @@ class Create extends Component {
   handleCreate = async (event) => {
     console.log('Create button pressed')
     this.setState({ isCreateLoading: true })
-    // TODO: input validation, make sure we have seconds below
+    
+    const questionHex = this.props.web3.utils.utf8ToHex(this.state.question)
+    const outcomesHex = this.state.outcomes.map(o => this.props.web3.utils.utf8ToHex(o))
     const timeoutAt = (new Date() / 1000 | 0) + this.state.timeoutMin*60 + this.state.timeoutSec
+    const minBet = this.state.minBet
+    const hostFee = this.state.hostFee
+
     this.props.betl.createRound(
-      this.state.question,   // TODO: toHex                   // question
-      this.state.outcomes,   // TODO: toHex                   // outcomes
-      [0, timeoutAt, this.state.minBet, this.state.hostFee],  // configData
-      [100],                                                  // payout tiers
+      questionHex,                        // question
+      outcomesHex,                        // outcomes
+      [0, timeoutAt, minBet, hostFee],    // configData
+      [100],                              // payout tiers
       this.props.getOptions()
     ).then(async (r) => {
       console.log('Success: createRound: expected round id: ' + this.state.nextRoundId)

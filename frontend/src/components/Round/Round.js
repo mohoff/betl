@@ -126,7 +126,7 @@ class Round extends Component {
 
     console.info('...Updating Round')
 
-    this.getRoundInfo(hostAddress, roundId)
+    this.getRoundInfoChanges(hostAddress, roundId)
     this.getRoundOutcomePools(hostAddress, roundId)
     this.getRoundOutcomeNumBets(hostAddress, roundId)
   }
@@ -154,6 +154,21 @@ class Round extends Component {
       }).catch(err => {
         reject()
       })
+    })
+  }
+
+  getRoundInfoChanges = async () => {
+    this.props.betl && this.props.betl.getRoundInfoChanges(this.state.hostId, this.state.roundId).then(r => {
+      let [status, endedAt, numBets, poolSize] = r
+
+      this.setState({
+        status: Number(status),
+        endedAt: Number(endedAt),
+        numBets: Number(numBets),
+        poolSize: Number(poolSize)
+      })
+    }).catch(err => {
+      console.error('Failed to get round changes!', err)
     })
   }
 
@@ -244,11 +259,13 @@ class Round extends Component {
   }
 
   handleSelect = (e) => {
+    this.resetBetResult()
     this.setState({ selectedOutcome: Number(e.target.value) })
-    console.log(this.state.outcomesBetPool, this.state.outcomesBetNum)
   }
 
   handleBetChange = (e) => {
+    this.resetBetResult()
+
     const inputBet = Number(e.target.value)
     this.setState({
       inputBet: inputBet,
@@ -292,6 +309,10 @@ class Round extends Component {
     isSuccess
       ? this.setState({ betResultText: message, betSuccess: true })
       : this.setState({ betResultText: message, betSuccess: false })
+  }
+
+  resetBetResult = () => {
+    this.setState({ betResultText: '' })
   }
 
   handleOutcomeStatsToggle = () => {

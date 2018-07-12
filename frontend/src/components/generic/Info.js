@@ -20,7 +20,7 @@ export const InfoError = ({ children }) => {
 const Info = ({ className, children }) => {
   return (
     <p
-      className={['has-text-centered', className].join(' ')} >
+      className={['has-text-centered is-bold', className].join(' ')} >
       {children}
     </p>
   )
