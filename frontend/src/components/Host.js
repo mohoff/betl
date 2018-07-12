@@ -60,8 +60,50 @@ class Host extends Component {
   }
 
   handleMore = () => {
-    // async fetch again host rounds.
-    // TODO: refresh automatically, without button
+    const numCurrentlyShown = this.state.rounds.length
+    const numNextShown = Math.min(numCurrentlyShown+5, this.state.nextRoundNumber)
+    const numToAdd = numNextShown - numCurrentlyShown
+    
+    if (!numToAdd) return // should not be the case
+
+    // Compute relevant roundNumbers and convert to roundIds
+    const roundIds = Array
+      .from({length: numToAdd}, (v, k) => k+numCurrentlyShown)
+      .map(roundNumber => {
+        const roundId = null // TODO: computeRRoundId
+        return roundId
+      })
+
+    // Fetch round for every roundId
+    const rounds = await Promise.all(
+      roundIds.map(roundId => {
+        return this.getRoundInfo(this.state.hostAddress, roundId)
+      })
+    )
+    
+    // Append new rounds to existing rounds
+    this.setState(prevState => {
+      rounds: [...prevState.rounds, rounds]
+    })
+  }
+
+  getRoundInfo = (hostAddress, roundId) => {
+    return new Promise((resolve, reject) => {
+      this.props.betl.getRoundInfo(this.state.hostAddress, roundId).then(r => {
+        console.log(r)
+        resolve({
+          roundId: roundId,
+          createdAt: r.createdAt,
+          endedAt: r.endedAt,
+          question: r.question,
+          poolSize: r.poolSize,
+          numBets: r.numBets
+        })
+      }).catch(err => {
+        console.error('Failed to fetch round! ', err)
+        reject()
+      })
+    })
   }
 
   handleLinkNameChange = (event) => {
