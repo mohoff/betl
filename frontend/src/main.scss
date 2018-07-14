@@ -1,15 +1,15 @@
 @import 'bulma/sass/utilities/initial-variables.sass';
 @import 'bulma/sass/utilities/functions.sass';
 
-
 $primary: rgb(175, 49, 95);
 $primary-light: rgb(237, 213, 222);
 $grey-lighter: #444;
 
+// from some color palette iterations
 $green: #58BC82;
 $green: #86BA90;
 $green-light: #96E6B3;
-$green-light: #8FE388;
+$green-light2: #8FE388;
 $yellow: #FFC857;
 $yellow: #E59500;
 $yellow: #F5F3BB;
@@ -17,7 +17,7 @@ $yellow: #F2E94E;
 $yellow: #F4AC45;
 $orange: #DFA06E;
 $brown: #412722;
-$green-light: #35FF69;
+$green-light3: #35FF69;
 $violet-dark: #412234;
 $violet: #521945;
 $violet2: #4A2545;
@@ -25,7 +25,7 @@ $violet-grey: #7E6B8F;
 $purple: #4E0250;
 $purple-grey: #645986;
 $blue: #8DA7BE;
-$blue: #0075A2;
+$blue2: #0075A2;
 $blue-light: #A3D9FF;
 $blue-dark: #242F40;
 $blue-oxford: #002642;
@@ -35,6 +35,38 @@ $teal-light: #75DDDD;
 $teal-dark: #508991;
 $red: #FF3E41;
 
+// Round status colors
+$invalid: $grey-dark;
+$invalid-invert: findColorInvert($invalid);
+$scheduled: $blue;
+$scheduled-invert: findColorInvert($scheduled);
+$open: $teal-dark;
+$open-invert: findColorInvert($open);
+$closed: $yellow;
+$closed-invert: findColorInvert($closed);
+$ended: $purple-grey;
+$ended-invert: findColorInvert($ended);
+$cancelled: $red;
+$cancelled-invert: findColorInvert($cancelled);
+$timeout: $grey-light;
+$timeout-invert: findColorInvert($timeout);
+
+@import 'bulma/sass/utilities/derived-variables.sass';
+$addColors: (
+  "invalid": ($invalid, $invalid-invert),
+  "scheduled": ($scheduled, $scheduled-invert),
+  "open": ($open, $open-invert),
+  "closed": ($closed, $closed-invert),
+  "ended": ($ended, $ended-invert),
+  "cancelled": ($cancelled, $cancelled-invert),
+  "timeout": ($timeout, $timeout-invert)
+);
+$colors: map-merge($colors, $addColors);
+
+$text: $grey-dark;
+$link: rgb(175, 49, 95);
+$link-hover: rgb(196, 56, 107);
+
 $gap: 16px;
 $tablet: 500px;
 $desktop: 500px;
@@ -42,9 +74,6 @@ $widescreen-enabled: false;
 $fullhd-enabled: false;
 $widescreen: 500px;
 $fullhd: 500px;
-
-$link: rgb(175, 49, 95);
-$link-hover: rgb(196, 56, 107);
 
 $font-text: 'Roboto';
 $font-primary: 'KarmaticArcade';
@@ -77,6 +106,45 @@ button {
 
 .headline {
     margin-top: 50px;
+}
+
+/*
+    Vertically center all children:
+    Does not horizontally center
+*/
+.is-vertical-center {
+    display: flex;
+    align-items: center;
+}
+
+/* 
+    Vertically aligned items:
+    By default stacked at top until element
+    with `.vertical-top-last` occurs  
+*/
+.is-vertical {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.is-vertical-top-last {
+    flex-grow: 1;
+}
+
+/* 
+    Vertically evenly aligned items:
+    Direct children are distributen evenly
+    across the vertical axis
+*/
+.is-vertical-even {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.is-vertical-even > * {
+    flex: 1;
 }
 
 .is-large {
@@ -125,6 +193,10 @@ button {
 
 .has-font-primary {
     font-family: $font-primary, sans-serif;
+}
+
+.has-color-text {
+    color: $text;
 }
 
 span {

@@ -10,6 +10,9 @@ import {
   InputText,
   WelcomeHost
 } from './generic'
+import * as TimeUtils from '../utils/TimeUtils.js'
+
+import './Host.scss'
 
 class Host extends Component {
 
@@ -59,7 +62,7 @@ class Host extends Component {
     })
   }
 
-  handleMore = () => {
+  handleMore = async () => {
     const numCurrentlyShown = this.state.rounds.length
     const numNextShown = Math.min(numCurrentlyShown+5, this.state.nextRoundNumber)
     const numToAdd = numNextShown - numCurrentlyShown
@@ -194,9 +197,11 @@ class Host extends Component {
           stats={this.state.stats} />
 
         <HeadingSection>Bets</HeadingSection>
+
         <Rounds
           rounds={this.state.rounds}
           numExistingRounds={this.state.nextRoundNumber} />
+
         
         {this.state.rounds.length < this.state.nextRoundNumber &&
           <ButtonPrimary
@@ -229,12 +234,67 @@ const Rounds = ({ rounds, numExistingRounds, hostId }) => {
   rounds = [
     {
       id: 'deadbeef1234',
+      status: 0,
       createdAt: 1234454545,
       endedAt: 1534234344,
       question: 'Helloooo?',
       poolSize: 5788873,
       numBets: 145
-    }
+    },
+    {
+      id: 'deadbeef1234',
+      status: 1,
+      createdAt: 1234454545,
+      endedAt: 1534234344,
+      question: 'Helloooo?',
+      poolSize: 5788873,
+      numBets: 145
+    },
+    {
+      id: 'deadbeef1234',
+      status: 2,
+      createdAt: 1234454545,
+      endedAt: 1534234344,
+      question: 'Helloooo?',
+      poolSize: 5788873,
+      numBets: 145
+    },
+    {
+      id: 'deadbeef1234',
+      status: 3,
+      createdAt: 1234454545,
+      endedAt: 1534234344,
+      question: 'Helloooo?',
+      poolSize: 5788873,
+      numBets: 145
+    },
+    {
+      id: 'deadbeef1234',
+      status: 4,
+      createdAt: 1234454545,
+      endedAt: 1534234344,
+      question: 'Helloooo?',
+      poolSize: 5788873,
+      numBets: 145
+    },
+    {
+      id: 'deadbeef1234',
+      status: 5,
+      createdAt: 1234454545,
+      endedAt: 1534234344,
+      question: 'Helloooo?',
+      poolSize: 5788873,
+      numBets: 145
+    },
+    {
+      id: 'deadbeef1234',
+      status: 6,
+      createdAt: 1234454545,
+      endedAt: 1534234344,
+      question: 'Helloooo?',
+      poolSize: 5788873,
+      numBets: 145
+    },
   ]
 
   if (!rounds || rounds.length === 0) {
@@ -242,20 +302,101 @@ const Rounds = ({ rounds, numExistingRounds, hostId }) => {
   }
 
   return (
-    rounds.map((round, i) => {
-      const roundLink = '/' + hostId + '/' + round.id
-      return (
-        <Link key={i} to={roundLink}>
-          <div className="">
-            {round.createdAt}<br />
-            {round.endedAt}<br />
-            {round.question}<br />
-            {round.poolSize}<br />
-            {round.numBets}<br />
+    <div>
+    { 
+      rounds.map((round, i) => {
+        const roundLink = '/' + hostId + '/' + round.id
+        return (
+          <div className="preview-container">
+            <Link key={i} to={roundLink}>
+              <RoundPreview
+                status={round.status}
+                createdAt={round.createdAt}
+                endedAt={round.endedAt}
+                question={round.question}
+                poolSize={round.poolSize}
+                numBets={round.numBets} />
+            </Link>
           </div>
-        </Link>
-      )
-    })
+        )
+      })
+    }
+    </div>
+  )
+}
+
+const RoundPreview = ({ status, createdAt, endedAt, question, poolSize, numBets }) => {
+  return (
+    <div className="columns has-color-text preview">
+      <div className="column is-9 is-vertical">
+        <div className="is-size-3 is-italic is-semi-bold has-text-primary preview-question">
+          "{question}"
+        </div>
+        <div className="has-text-grey is-italic is-vertical-top-last preview-times">
+          created {TimeUtils.getRelativeTime(createdAt)}<br />
+        </div>
+        <RoundStatusSmall status={status} endedAt={endedAt} />
+      </div>
+      <div className="column is-3 is-vertical-even preview-right">
+        <div className="is-vertical-center">
+          <div>
+            <p className="is-size-6 is-bold has-text-grey-light">
+              POOL
+            </p>
+            <p className="is-size-3 is-bold is-monospace">
+              {poolSize}
+            </p>
+          </div>
+        </div>
+        <div className="is-vertical-center">
+          <div>
+            <p className="is-size-6 is-bold has-text-grey-light">
+              #PLAYERS
+            </p>
+            <p className="is-size-3 is-bold is-monospace">
+              {numBets}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const RoundStatusSmall = ({ status, endedAt }) => {
+  return (
+    <div>
+      <RoundStatus status={status} className="is-medium" />
+      <RoundStatusSmallTime status={status} endedAt={endedAt} />
+    </div>
+  )
+}
+
+const RoundStatusSmallTime = ({ status, endedAt, timeoutAt }) => {
+  if (status < 3) return null
+
+  return (
+    <span className="has-text-grey is-italic preview-time-ended">
+      {
+        status === 6
+          ? TimeUtils.getRelativeTime(timeoutAt)
+          : TimeUtils.getRelativeTime(endedAt)
+      }
+    </span>
+  )
+}
+
+const RoundStatus = ({ status, className }) => {
+  return (
+    <span
+      class={[
+        'tag',
+        className,
+        getStatusColor(status)
+      ].join(' ')}>
+
+      {getStatusText(status)}
+    </span>
   )
 }
 
@@ -315,6 +456,44 @@ const LinkName = (props) => {
       </div>
     </div>
   )
+}
+
+const getStatusColor = (status) => {
+  switch (status) {
+    case 1:
+      return 'is-scheduled'
+    case 2:
+      return 'is-open'
+    case 3:
+      return 'is-closed'
+    case 4:
+      return 'is-ended'
+    case 5:
+      return 'is-cancelled'
+    case 6:
+      return 'is-timeout'
+    default:
+      return 'is-invalid'
+  }
+}
+
+const getStatusText = (status) => {
+  switch (status) {
+    case 1:
+      return 'SCHEDULED'
+    case 2:
+      return 'OPEN'
+    case 3:
+      return 'CLOSED'
+    case 4:
+      return 'ENDED'
+    case 5:
+      return 'CANCELLED'
+    case 6:
+      return 'TIMEOUT'
+    default:
+      return 'INVALID'
+  }
 }
 
 // Wrap with React context consumer to provide web3 context
