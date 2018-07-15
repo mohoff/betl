@@ -1,5 +1,9 @@
 @import '../main.scss';
 
+.rounds {
+	margin-bottom: 50px;
+}
+
 .preview-container {
 	margin-top: 25px;
 }
@@ -7,11 +11,30 @@
 .preview {
 	background-color: #eee;
 	border-radius: 6px;
-	border: 4px solid #eee;
+	border-width: 4px;
+	border-style: solid;
+	border-color: #eee;
 }
-
-.preview:hover {
-	border: 4px solid $primary;
+.preview.is-invalid:hover {
+	border-color: $invalid;
+}
+.preview.is-scheduled:hover {
+	border-color: $scheduled;
+}
+.preview.is-open:hover {
+	border-color: $open;
+}
+.preview.is-closed:hover {
+	border-color: $closed;
+}
+.preview.is-ended:hover {
+	border-color: $ended;
+}
+.preview.is-cancelled:hover {
+	border-color: $cancelled;
+}
+.preview.is-timeout:hover {
+	border-color: $timeout;
 }
 
 .preview-question {

@@ -14,6 +14,8 @@ import * as TimeUtils from '../utils/TimeUtils.js'
 
 import './Host.scss'
 
+const BLOCK_NUM_ROUND = 1
+
 class Host extends Component {
 
   constructor(props) {
@@ -42,68 +44,114 @@ class Host extends Component {
   }
 
   componentDidMount = async () => {
+    await this.getHostInfo(this.state.hostId)
+    await this.getNextRoundNumber(this.state.hostAddress)
+    this.addRounds(BLOCK_NUM_ROUND, 0)
+  }
+
+  getHostInfo = async (hostId) => {
     if(this.props.isAddress(this.state.hostId)) {
-      this.setState({ hostAddress: this.state.hostId })
+      await this.setState({ hostAddress: this.state.hostId })
       this.props.getUserName(this.state.hostId).then(hostName => {
         this.setState({ hostName: hostName })
       })
     } else {
       this.setState({ hostName: this.state.hostId })
       const hostAddress = await this.props.getUserAddress(this.state.hostId)
-      this.setState({ hostAddress: hostAddress })
+      await this.setState({ hostAddress: hostAddress })
     }
   }
 
-  getNextRoundNumber = () => {
-    this.props.betl.getNextRoundNumber(this.getOptions()).then(r => {
-      this.setState({ nextRoundNumber: Number(r) })
-    }).catch(err => {
-      console.error('Failed to fetch next round number! ', err)
+  getNextRoundNumber = (hostAddress) => {
+    return new Promise((resolve, reject) => {
+      this.props.betl.getNextRoundNumber(hostAddress).then(r => {
+        this.setState({ nextRoundNumber: Number(r) }, () => {
+          resolve(Number(r))
+        })
+      }).catch(err => {
+        console.error('Failed to fetch next round number! ', err)
+        reject()
+      })
     })
   }
 
   handleMore = async () => {
+    // TODO: add more-button loading feature (make this.addRounds a promise and await it here)
     const numCurrentlyShown = this.state.rounds.length
-    const numNextShown = Math.min(numCurrentlyShown+5, this.state.nextRoundNumber)
+    const numNextShown = Math.min(numCurrentlyShown+BLOCK_NUM_ROUND, this.state.nextRoundNumber)
     const numToAdd = numNextShown - numCurrentlyShown
     
+    this.addRounds(numToAdd, numCurrentlyShown)
+  }
+
+  addRounds = async (numToAdd, numCurrentlyShown, numRounds=this.state.nextRoundNumber) => {
     if (!numToAdd) return // should not be the case
 
     // Compute relevant roundNumbers and convert to roundIds
-    const roundIds = Array
-      .from({length: numToAdd}, (v, k) => k+numCurrentlyShown)
-      .map(roundNumber => {
-        const roundId = null // TODO: computeRRoundId
-        return roundId
-      })
+    const roundIds = await Promise.all(
+      Array
+        .from({length: numToAdd}, (v, k) => (numRounds-1)-(k+numCurrentlyShown))
+        .map(async (roundNumber) => {
+          return this.props.betl.getRoundIdForRoundNumber(this.state.hostAddress, roundNumber)
+        })
+    )
 
     // Fetch round for every roundId
-    const rounds = await Promise.all(
+    const olderRounds = await Promise.all(
       roundIds.map(roundId => {
         return this.getRoundInfo(this.state.hostAddress, roundId)
       })
     )
-    
     // Append new rounds to existing rounds
     this.setState(prevState => {
-      rounds: [...prevState.rounds, rounds]
+      return {
+        rounds: [...prevState.rounds, ...olderRounds]
+      }
     })
   }
 
   getRoundInfo = (hostAddress, roundId) => {
     return new Promise((resolve, reject) => {
-      this.props.betl.getRoundInfo(this.state.hostAddress, roundId).then(r => {
-        console.log(r)
+      this.props.betl.getRoundInfo(hostAddress, roundId).then(r => {
+        let [status, createdAt, endedAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee] = r
+        if (Number(status) === 0) reject()
+
+        //console.log('Fetched Bet with id: ' + this.state.roundId)
         resolve({
-          roundId: roundId,
-          createdAt: r.createdAt,
-          endedAt: r.endedAt,
-          question: r.question,
-          poolSize: r.poolSize,
-          numBets: r.numBets
+          id: roundId.substr(2),
+          status: Number(status),
+          createdAt: Number(createdAt),
+          endedAt: Number(endedAt),
+          timeoutAt: Number(timeoutAt),
+          question: this.props.web3.utils.hexToUtf8(question),
+          numOutcomes: Number(numOutcomes),
+          numBets: Number(numBets),
+          poolSize: Number(poolSize),
+          hostBonus: Number(hostBonus),
+          hostFee: Number(hostFee),
         })
+        resolve(Number(status))
       }).catch(err => {
         console.error('Failed to fetch round! ', err)
+        reject()
+      })
+    })
+  }
+
+  // TODO: setInterval to call this every 1s for every round which is in status < Status.Ended
+  getRoundInfoChanges = async (hostId, roundId) => {
+    return new Promise((resolve, reject) => {
+      this.props.betl && this.props.betl.getRoundInfoChanges(hostId, roundId).then(r => {
+        let [status, endedAt, numBets, poolSize] = r
+
+        resolve({
+          status: Number(status),
+          endedAt: Number(endedAt),
+          numBets: Number(numBets),
+          poolSize: Number(poolSize)
+        })
+      }).catch(err => {
+        console.error('Failed to get round changes!', err)
         reject()
       })
     })
@@ -186,7 +234,6 @@ class Host extends Component {
       }
     }
 
-
     return (
       <div>
         
@@ -200,9 +247,9 @@ class Host extends Component {
 
         <Rounds
           rounds={this.state.rounds}
-          numExistingRounds={this.state.nextRoundNumber} />
-
-        
+          numExistingRounds={this.state.nextRoundNumber}
+          hostId={this.state.hostId} />
+ 
         {this.state.rounds.length < this.state.nextRoundNumber &&
           <ButtonPrimary
             isLoading={this.isLoading}
@@ -230,8 +277,7 @@ const NoRounds = () => {
 }
 
 const Rounds = ({ rounds, numExistingRounds, hostId }) => {
-  hostId = 'moo'
-  rounds = [
+  /*rounds = [
     {
       id: 'deadbeef1234',
       status: 0,
@@ -296,19 +342,19 @@ const Rounds = ({ rounds, numExistingRounds, hostId }) => {
       numBets: 145
     },
   ]
-
+  */
   if (!rounds || rounds.length === 0) {
     return <NoRounds />
   }
 
   return (
-    <div>
+    <div className="rounds">
     { 
       rounds.map((round, i) => {
         const roundLink = '/' + hostId + '/' + round.id
         return (
-          <div className="preview-container">
-            <Link key={i} to={roundLink}>
+          <div key={i} className="preview-container">
+            <Link to={roundLink}>
               <RoundPreview
                 status={round.status}
                 createdAt={round.createdAt}
@@ -325,42 +371,57 @@ const Rounds = ({ rounds, numExistingRounds, hostId }) => {
   )
 }
 
-const RoundPreview = ({ status, createdAt, endedAt, question, poolSize, numBets }) => {
-  return (
-    <div className="columns has-color-text preview">
-      <div className="column is-9 is-vertical">
-        <div className="is-size-3 is-italic is-semi-bold has-text-primary preview-question">
-          "{question}"
+class RoundPreview extends Component {
+  constructor(props) {
+    super(props)
+  }
+
+  render () {
+    const {
+      status,
+      question,
+      createdAt,
+      endedAt,
+      poolSize,
+      numBets
+    } = this.props
+
+    return (
+      <div className={'columns has-color-text preview ' + getStatusColor(status)}>
+        <div className="column is-9 is-vertical">
+          <div className="is-size-3 is-italic is-semi-bold has-text-primary preview-question">
+            "{question}"
+          </div>
+          <div className="has-text-grey is-italic is-vertical-top-last preview-times">
+            created {TimeUtils.getRelativeTime(createdAt)}<br />
+          </div>
+          <RoundStatusSmall status={status} endedAt={endedAt} />
         </div>
-        <div className="has-text-grey is-italic is-vertical-top-last preview-times">
-          created {TimeUtils.getRelativeTime(createdAt)}<br />
-        </div>
-        <RoundStatusSmall status={status} endedAt={endedAt} />
-      </div>
-      <div className="column is-3 is-vertical-even preview-right">
-        <div className="is-vertical-center">
-          <div>
-            <p className="is-size-6 is-bold has-text-grey-light">
-              POOL
-            </p>
-            <p className="is-size-3 is-bold is-monospace">
-              {poolSize}
-            </p>
+        <div className="column is-3 is-vertical-even preview-right">
+          <div className="is-vertical-center">
+            <div>
+              <p className="is-size-6 is-bold has-text-grey-light">
+                POOL
+              </p>
+              <p className="is-size-3 is-bold is-monospace">
+                {poolSize}
+              </p>
+            </div>
+          </div>
+          <div className="is-vertical-center">
+            <div>
+              <p className="is-size-6 is-bold has-text-grey-light">
+                #PLAYERS
+              </p>
+              <p className="is-size-3 is-bold is-monospace">
+                {numBets}
+              </p>
+            </div>
           </div>
         </div>
-        <div className="is-vertical-center">
-          <div>
-            <p className="is-size-6 is-bold has-text-grey-light">
-              #PLAYERS
-            </p>
-            <p className="is-size-3 is-bold is-monospace">
-              {numBets}
-            </p>
-          </div>
-        </div>
       </div>
-    </div>
-  )
+    )
+  }
 }
 
 const RoundStatusSmall = ({ status, endedAt }) => {
@@ -389,8 +450,9 @@ const RoundStatusSmallTime = ({ status, endedAt, timeoutAt }) => {
 const RoundStatus = ({ status, className }) => {
   return (
     <span
-      class={[
+      className={[
         'tag',
+        //'is-monospace',
         className,
         getStatusColor(status)
       ].join(' ')}>
