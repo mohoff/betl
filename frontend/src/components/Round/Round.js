@@ -33,7 +33,6 @@ class Round extends Component {
 
     this.state = {
       hostId: props.match.params.hostId.toLowerCase(),
-      // contract expects byte parameters to be prefixed with '0x'
       roundId: '0x' + props.match.params.roundId.toLowerCase(),
 
       // Host data
@@ -72,22 +71,25 @@ class Round extends Component {
 
   componentDidMount = async () => {
     this.getEthFiatRate()
+    await this.getHostInfo(this.state.hostId)
+    this.getRound(this.state.hostAddress, this.state.roundId)
+  }
 
+  componentWillUnmount = () => {
+    clearInterval(this.pollingInterval)
+  }
+
+  getHostInfo = async (hostId) => {
     if(this.props.isAddress(this.state.hostId)) {
-      this.setState({ hostAddress: this.state.hostId })
+      await this.setState({ hostAddress: this.state.hostId })
       this.props.getUserName(this.state.hostId).then(hostName => {
         this.setState({ hostName: hostName })
       })
     } else {
       this.setState({ hostName: this.state.hostId })
       const hostAddress = await this.props.getUserAddress(this.state.hostId)
-      this.setState({ hostAddress: hostAddress })
+      await this.setState({ hostAddress: hostAddress })
     }
-    this.getRound(this.state.hostAddress, this.state.roundId)
-  }
-
-  componentWillUnmount = () => {
-    clearInterval(this.pollingInterval)
   }
 
   getEthFiatRate = async () => {
