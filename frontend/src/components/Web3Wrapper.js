@@ -9,7 +9,9 @@ import {
   LoadingMetamask
 } from './generic'
 
+
 export const Web3Context = React.createContext();
+
 
 class Web3Wrapper extends Component {
   constructor(props) {

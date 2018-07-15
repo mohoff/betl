@@ -1,6 +1,6 @@
 import React from 'react'
 
-import * as StringUtils from '../../utils/StringUtils'
+import { StringUtils } from '../../utils'
 
 
 export const RoundHost = ({ hostAddress, hostName }) => {

@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import { Link } from 'react-router-dom'
 
-import { Web3Context } from './Web3Wrapper'
+import { Web3Context } from '../Web3Wrapper'
 import {
   HeadingSection,
   Button,
@@ -9,10 +9,11 @@ import {
   ButtonDelete,
   InputText,
   WelcomeHost
-} from './generic'
-import * as TimeUtils from '../utils/TimeUtils.js'
+} from '../generic'
+import { TimeUtils } from '../../utils'
 
 import './Host.scss'
+
 
 const BLOCK_NUM_ROUND = 1
 
@@ -371,57 +372,51 @@ const Rounds = ({ rounds, numExistingRounds, hostId }) => {
   )
 }
 
-class RoundPreview extends Component {
-  constructor(props) {
-    super(props)
-  }
+const RoundPreview = (props) => {
+  const {
+    status,
+    question,
+    createdAt,
+    endedAt,
+    poolSize,
+    numBets
+  } = this.props
 
-  render () {
-    const {
-      status,
-      question,
-      createdAt,
-      endedAt,
-      poolSize,
-      numBets
-    } = this.props
-
-    return (
-      <div className={'columns has-color-text preview ' + getStatusColor(status)}>
-        <div className="column is-9 is-vertical">
-          <div className="is-size-3 is-italic is-semi-bold has-text-primary preview-question">
-            "{question}"
-          </div>
-          <div className="has-text-grey is-italic is-vertical-top-last preview-times">
-            created {TimeUtils.getRelativeTime(createdAt)}<br />
-          </div>
-          <RoundStatusSmall status={status} endedAt={endedAt} />
+  return (
+    <div className={'columns has-color-text preview ' + getStatusColor(status)}>
+      <div className="column is-9 is-vertical">
+        <div className="is-size-3 is-italic is-semi-bold has-text-primary preview-question">
+          "{question}"
         </div>
-        <div className="column is-3 is-vertical-even preview-right">
-          <div className="is-vertical-center">
-            <div>
-              <p className="is-size-6 is-bold has-text-grey-light">
-                POOL
-              </p>
-              <p className="is-size-3 is-bold is-monospace">
-                {poolSize}
-              </p>
-            </div>
+        <div className="has-text-grey is-italic is-vertical-top-last preview-times">
+          created {TimeUtils.getRelativeTime(createdAt)}<br />
+        </div>
+        <RoundStatusSmall status={status} endedAt={endedAt} />
+      </div>
+      <div className="column is-3 is-vertical-even preview-right">
+        <div className="is-vertical-center">
+          <div>
+            <p className="is-size-6 is-bold has-text-grey-light">
+              POOL
+            </p>
+            <p className="is-size-3 is-bold is-monospace">
+              {poolSize}
+            </p>
           </div>
-          <div className="is-vertical-center">
-            <div>
-              <p className="is-size-6 is-bold has-text-grey-light">
-                #PLAYERS
-              </p>
-              <p className="is-size-3 is-bold is-monospace">
-                {numBets}
-              </p>
-            </div>
+        </div>
+        <div className="is-vertical-center">
+          <div>
+            <p className="is-size-6 is-bold has-text-grey-light">
+              #PLAYERS
+            </p>
+            <p className="is-size-3 is-bold is-monospace">
+              {numBets}
+            </p>
           </div>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
 }
 
 const RoundStatusSmall = ({ status, endedAt }) => {

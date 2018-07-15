@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
 import { Link } from 'react-router-dom'
-import { Web3Context } from './Web3Wrapper'
+import { Web3Context } from '../Web3Wrapper'
+
 import './Join.scss'
 
 

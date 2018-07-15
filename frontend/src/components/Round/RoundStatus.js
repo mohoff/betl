@@ -2,6 +2,7 @@ import React from 'react'
 
 import { ButtonPrimary } from '../generic'
 
+
 export const UNDEFINED = 0
 export const SCHEDULED = 1
 export const OPEN = 2
@@ -31,6 +32,7 @@ export const RoundStatus = ({ status, handleClaim }) => {
       return <RoundStatusUndefined />
   }
 }
+
 
 const RoundStatusLoading = () => {
   return <RoundStatusInfo className="is-italic">Loading...</RoundStatusInfo>

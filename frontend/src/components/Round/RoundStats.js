@@ -1,7 +1,7 @@
 import React from 'react'
 
 import { ToggleText } from '../generic'
-import * as StringUtils from '../../utils/StringUtils'
+import { StringUtils } from '../../utils'
 
 
 export const RoundStats = ({ bets, pool, bonus, unitToggled, handleUnitToggle }) => {

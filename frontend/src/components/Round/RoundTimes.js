@@ -1,6 +1,6 @@
 import React from 'react'
 
-import * as TimeUtils from '../../utils/TimeUtils'
+import { TimeUtils } from '../../utils'
 
 
 export const RoundTimes = ({ createdAt, endedAt, timeoutAt }) => {

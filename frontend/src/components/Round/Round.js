@@ -21,7 +21,7 @@ import {
   ErrorPage
 } from '../generic'
 
-import * as StringUtils from '../../utils/StringUtils'
+import { StringUtils } from '../../utils'
 
 import './Round.scss'
 

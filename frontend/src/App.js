@@ -6,17 +6,20 @@ import {
 } from 'react-router-dom'
 import { hot } from 'react-hot-loader'
 
-import './App.css'
-
 import Web3Wrapper from './components/Web3Wrapper.js'
-import Header from './components/sections/Header.js'
-import Footer from './components/sections/Footer.js'
-import Home from './components/Home.js'
-import Create from './components/Create.js'
-import Join from './components/Join.js'
-import Host from './components/Host.js'
-import Round from './components/Round/Round.js'
-import NotFound from './components/NotFound.js'
+import {
+  Header,
+  Footer
+} from './components/sections'
+import {
+  Create,
+  Home,
+  Host,
+  Join,
+  Round,
+  NotFound
+} from './components'
+
 
 class App extends Component {
   render = () => {
