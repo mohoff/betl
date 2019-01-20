@@ -1,0 +1,29 @@
+{
+  "extends": "solium:all",
+  "plugins": ["security"],
+  "rules": {
+    "arg-overflow": "error",
+    "blank-lines": "error",
+    "camelcase": "error",
+    "deprecated-suicide": "error",
+    "emit": "error",
+    "error-reason": "off",
+    "function-order": "off",
+    "indentation": ["error", 2],
+    "linebreak-style": ["error", "unix"],
+    "no-constant": "error",
+    "no-empty-blocks": "error",
+    "pragma-on-top": "error",
+    "quotes": ["error", "double"],
+    "uppercase": "off",
+    "visibility-first": "error",
+    "whitespace": "error",
+    "security/enforce-loop-bounds": "warning",
+    "security/no-assign-params": "off",
+    "security/no-func-overriding": "error",
+    "security/no-inline-assembly": "off",
+    "security/no-low-level-calls": "off",
+    "security/no-suicide-or-selfdestruct": "error",
+    "security/no-var": "error"
+  }
+}
