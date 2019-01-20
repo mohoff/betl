@@ -1,9 +1,9 @@
 pragma solidity ^0.5.2;
 
-import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
-import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
+import './external/Owned.sol';
+import './external/SafeMath.sol';
 
-contract Betl is Ownable {
+contract Betl is Owned {
   using SafeMath for uint;
 
   uint private constant FEE_PERCENT = 1;
@@ -130,9 +130,9 @@ contract Betl is Ownable {
   // COSTS: 294518 gas -> @ 5Gwei: 1 dollar
   function createRound(
     bytes32 _question,
-    bytes32[] _outcomes,
-    uint[4] _configData, // array of format `[scheduledAt, timeout, minBet, hostFee]`
-    uint[] _payoutTiers
+    bytes32[] calldata _outcomes,
+    uint[4] calldata _configData, // array of format `[scheduledAt, timeout, minBet, hostFee]`
+    uint[] calldata _payoutTiers
   )
     external
     payable
@@ -197,7 +197,7 @@ contract Betl is Ownable {
     r.stats.poolSize = r.stats.poolSize.add(msg.value);
   } 
 
-  function pickWinnerAndEnd(uint[] _picks, bytes4 _roundId) external payable {
+  function pickWinnerAndEnd(uint[] calldata _picks, bytes4 _roundId) external payable {
     Round storage r = getRound(msg.sender, _roundId);
     require(r.status == Status.OPEN || r.status == Status.CLOSED);
 
