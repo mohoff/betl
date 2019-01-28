@@ -17,7 +17,7 @@ module.exports = {
       gas: 7e6
     },
     ropsten: {
-      provider: getProvider('rinkeby'),
+      provider: getProvider('ropsten'),
       network_id: 3,
       gas: 7e6
     },
@@ -27,7 +27,7 @@ module.exports = {
       gas: 7.6e6
     },
     kovan: {
-      provider: getProvider('rinkeby'),
+      provider: getProvider('kovan'),
       network_id: 42,
       gas: 7.9e6
     },
@@ -61,8 +61,8 @@ module.exports = {
   // Configure your compilers
   compilers: {
     solc: {
-      version: '0.5.2',
-      docker: true,
+      version: '0.5.3',
+      docker: false,
       settings: {
         optimizer: {
           enabled: true,

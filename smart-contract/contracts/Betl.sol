@@ -1,4 +1,4 @@
-pragma solidity ^0.5.2;
+pragma solidity ^0.5.3;
 
 import './external/Owned.sol';
 import './external/SafeMath.sol';
@@ -57,7 +57,7 @@ contract Betl is Owned {
     uint timeoutAt;
     uint minBet;
     uint hostBonus; // or: add directly to roundstats += hostBonus
-    uint hostFee;
+    uint hostFee;   // in percent
 
     bytes32 question;
     Outcomes outcomes;
@@ -97,7 +97,8 @@ contract Betl is Owned {
     Round storage r = rounds[_host][_roundId];
     // verify existance of round
     Status status = r.status;
-    require(uint(status) < 7);
+    require(status > Status.UNDEFINED && status <= Status.TIMEOUT);
+
     return r;
   }
 
@@ -112,15 +113,15 @@ contract Betl is Owned {
 
   // Frontend needs to fetch roundId of created round.
   function getNextRoundId(address _host) public view returns (bytes4) {
-    uint nrn = hostContext[_host].nextRoundNumber;
-    bytes32 hash = keccak256(abi.encodePacked(_host, nrn));
+    bytes32 hash = keccak256(abi.encodePacked(_host, hostContext[_host].nextRoundNumber));
     return bytes4(hash);
   }
 
-  function generateRoundId(address _host) private returns (uint, bytes4) {
+  function generateNewRoundForHost(address _host) private returns (uint, bytes4) {
     uint roundNumber = hostContext[_host].nextRoundNumber;
     bytes4 roundId = getNextRoundId(_host);
     hostContext[_host].nextRoundNumber += 1;
+  
     return (roundNumber, roundId);
   }
 
@@ -131,7 +132,7 @@ contract Betl is Owned {
   function createRound(
     bytes32 _question,
     bytes32[] calldata _outcomes,
-    uint[4] calldata _configData, // array of format `[scheduledAt, timeout, minBet, hostFee]`
+    uint[4] calldata _configData, // array of format `[scheduledAt, timeout, minBet, hostFeeInPercent]`
     uint[] calldata _payoutTiers
   )
     external
@@ -145,50 +146,54 @@ contract Betl is Owned {
 
     Status status = Status.OPEN;
 
-    Outcomes memory outcomes = Outcomes(
-      _outcomes,                        // outcomes
-      _payoutTiers                      // payout tiers in percent in DESC order
-    );
+    Outcomes memory outcomes = Outcomes({
+      outcomes: _outcomes,
+      payoutTiers: _payoutTiers // in DESC order
+    });
 
-    Results memory results = Results(
-      new uint[](_outcomes.length)      // payouts
-    );
+    Results memory results = Results({
+      payouts: new uint[](_outcomes.length)
+    });
 
-    Stats memory stats = Stats(
-      0,                                // numBets
-      msg.value                         // poolSize
-    );
+    Stats memory stats = Stats({
+      numBets: 0,
+      poolSize: msg.value
+    });
 
-    uint roundNumber;
-    bytes4 roundId;
-    (roundNumber, roundId) = generateRoundId(msg.sender);
+    (uint roundNumber, bytes4 roundId) = generateNewRoundForHost(msg.sender);
 
-    rounds[msg.sender][roundId] = Round(
-      roundNumber,
-      status,                           // initial status
-      now,                              // createdAt
-      0,                                // endedAt
-      now + _configData[1],             // timeoutAt
-      _configData[2],                   // minBet
-      msg.value,                        // hostBonus
-      _configData[3],                   // hostFee
-
-      _question,
-      outcomes,
-      results,
-      stats
-    );
+    rounds[msg.sender][roundId] = Round({
+      roundNumber: roundNumber,
+      status: status,
+      createdAt: now,
+      endedAt: 0,
+      timeoutAt: now + _configData[1],
+      minBet: _configData[2],
+      hostBonus: msg.value,
+      hostFee: _configData[3],
+      question: _question,
+      outcomes: outcomes,
+      results: results,
+      stats: stats
+    });
 
     emit RoundCreated(msg.sender, roundId);
   }
 
-  function bet(address _host, bytes4 _roundId, uint _outcomeIndex) external payable {
+  function bet(
+    address _host,
+    bytes4 _roundId,
+    uint _outcomeIndex
+  )
+    external
+    payable
+  {
     Round storage r = getRound(_host, _roundId);
     require(r.status == Status.OPEN);
 
     require(msg.value > 0 && msg.value >= r.minBet);
-    require(r.outcomes.outcomes[_outcomeIndex] != bytes32(0));
-    require(r.timeoutAt == 0 || now < r.timeoutAt);
+    require(_outcomeIndex < r.outcomes.outcomes.length);
+    require(r.timeoutAt == 0 || now < r.timeoutAt); // TODO: refactor to checkTimeout/checkStatus modifier?
   
     r.playerBets[_outcomeIndex][msg.sender] = r.playerBets[_outcomeIndex][msg.sender].add(msg.value);
     r.outcomePools[_outcomeIndex] = r.outcomePools[_outcomeIndex].add(msg.value);
@@ -197,21 +202,26 @@ contract Betl is Owned {
     r.stats.poolSize = r.stats.poolSize.add(msg.value);
   } 
 
-  function pickWinnerAndEnd(uint[] calldata _picks, bytes4 _roundId) external payable {
+  function pickWinnerAndEnd(
+    uint[] calldata _picks,
+    bytes4 _roundId
+  )
+    external
+    payable
+  {
     Round storage r = getRound(msg.sender, _roundId);
     require(r.status == Status.OPEN || r.status == Status.CLOSED);
-
     require(_picks.length == r.outcomes.outcomes.length);
-    require(now < r.timeoutAt); // --> cancelInternal when timeoutAt reached? Nahh. move to Closed?
+    require(now < r.timeoutAt); // TODO: add modifier checkTimeout/checkStatus ?
 
-    uint ownerFee = r.stats.poolSize.mul(FEE_PERCENT).div(100);
-    uint remainingPool = r.stats.poolSize - ownerFee;
-    uint hostFee = r.stats.poolSize.mul(r.hostFee).div(100);
-    remainingPool = remainingPool - hostFee;
+    uint poolSize = r.stats.poolSize;
+    uint ownerFee = poolSize.mul(FEE_PERCENT).div(100);
+    uint hostFee = poolSize.mul(r.hostFee).div(100);
+    uint payoutPool = poolSize - (ownerFee + hostFee);
 
     uint allShares;
 
-    for (uint i=0; i<_picks.length; i++) {
+    for (uint i = 0; i < _picks.length; i++) {
       uint outcomeShare = _picks[i];
 
       if(outcomeShare == 0) continue;
@@ -222,29 +232,23 @@ contract Betl is Owned {
       // populate lookup to simplify getter function `getRoundOutcomeWinShare`
       r.results.outcomeWinShares[i] = outcomeShare;
 
-      // distribute round pool
-      r.results.payouts[i] = remainingPool.mul(outcomeShare).div(100);
+      // Register `outcomeShare` percent of `payoutPool` to payouts of iterated outcome
+      r.results.payouts[i] = payoutPool.mul(outcomeShare).div(100);
     }
     require(allShares == 100);
 
-    hostContext[msg.sender].totalNumBets += r.stats.numBets;
-    hostContext[msg.sender].totalPoolSize += r.stats.poolSize;
-    hostContext[msg.sender].numRoundsSuccess += 1;
+    hostContext[msg.sender].totalNumBets = hostContext[msg.sender].totalNumBets.add(r.stats.numBets);
+    hostContext[msg.sender].totalPoolSize = hostContext[msg.sender].totalPoolSize.add(r.stats.poolSize);
+    hostContext[msg.sender].numRoundsSuccess = hostContext[msg.sender].numRoundsSuccess.add(1);
     r.status = Status.FINISHED;
     r.endedAt = now;
 
     owner.transfer(ownerFee);
-    if (hostFee > 0) msg.sender.transfer(hostFee);
+    if (hostFee > 0) {
+      msg.sender.transfer(hostFee);
+    }
 
     emit RoundFinished(msg.sender, _roundId);
-  }
-
-  function areValidPicks(uint[] memory _picks) private pure returns (bool) {
-    uint sum;
-    for (uint i=0; i<_picks.length; i++) {
-      sum += _picks[i];
-    }
-    return sum == 100;
   }
 
   function getOutcomeId(Round storage _round, uint _outcomeIndex) private view returns (bytes32) {
@@ -257,12 +261,10 @@ contract Betl is Owned {
     
     uint myPayout;
 
-    for (uint i=0; i<r.outcomes.outcomes.length; i++) {
+    for (uint i = 0; i < r.outcomes.outcomes.length; i++) {
       uint outcomeShare = r.results.outcomeWinShares[i];
 
-      if (outcomeShare == 0) {
-        continue;
-      }
+      if (outcomeShare == 0) continue;
    
       uint myOutcomePayout = getMyPayoutForOutcome(
           r.playerBets[i][msg.sender],
@@ -279,28 +281,30 @@ contract Betl is Owned {
       }
 
       // Minor optimization that skips iterations in case an outcome got picked as only
-      // winner (outcomeShare == 100 (%)) which is expeceted to be often the case
+      // winner (outcomeShare == 100 (%)) which is expected to be true frequently
       if (outcomeShare == 100) {
         break;
       }
     }
 
     require(myPayout > 0);
+
     msg.sender.transfer(myPayout);
   }
 
   function claimRefund(address _host, bytes4 _roundId) external {
     Round storage r = getRound(_host, _roundId);
-    require(r.status == Status.CANCELLED || r.status == Status.TIMEOUT);
+    require(r.status == Status.CANCELLED || r.status == Status.TIMEOUT, "Round is neither cancelled nor timed out");
 
     uint myRefund;
 
-    for(uint i=0; i<r.outcomes.outcomes.length; i++) {
+    for(uint i = 0; i < r.outcomes.outcomes.length; i++) {
       myRefund = myRefund.add(r.playerBets[i][msg.sender]);
       r.playerBets[i][msg.sender] = 0;
     }
 
-    require(myRefund > 0);
+    require(myRefund > 0, "No refunds to be claimed");
+
     msg.sender.transfer(myRefund);
   }
 
@@ -321,10 +325,11 @@ contract Betl is Owned {
 
   function cancelRound(bytes4 _roundId) external {
     Round storage r = getRound(msg.sender, _roundId);
-    require(r.status == Status.SCHEDULED || r.status == Status.OPEN);
+    require(r.status == Status.SCHEDULED || r.status == Status.OPEN, "Round cannot be cancelled");
 
     rounds[msg.sender][_roundId].status = Status.CANCELLED;
-    hostContext[msg.sender].numRoundsCancelled += 1;
+    hostContext[msg.sender].numRoundsCancelled = hostContext[msg.sender].numRoundsCancelled.add(1);
+
     emit RoundCancelled(msg.sender, _roundId);
   }
 
@@ -333,10 +338,14 @@ contract Betl is Owned {
   /// Getters used by UI
   ///
 
-  function getRoundInfo(address _host, bytes4 _roundId)
+  function getRoundInfo(
+    address _host,
+    bytes4 _roundId
+  )
     public
     view
     roundExists(_host, _roundId)
+    // TODO: refactor into returning struct with ABIEncoderV2
     // status, createdAt, endedAt, timeoutAt, question, numOutcomes, numBets, poolSize, hostBonus, hostFee
     returns (uint, uint, uint, uint, bytes32, uint, uint, uint, uint, uint)
   {
@@ -358,7 +367,13 @@ contract Betl is Owned {
 
   // Convenience function for the client to only fetch fields that can be
   // updated in the lifecycle of a Round
-  function getRoundInfoChanges(address _host, bytes4 _roundId) public view roundExists(_host, _roundId)
+  function getRoundInfoChanges(
+    address _host,
+    bytes4 _roundId
+  )
+    public
+    view
+    roundExists(_host, _roundId)
     returns (uint, uint, uint, uint)
   {
     Round storage r = getRound(_host, _roundId);
@@ -419,6 +434,7 @@ contract Betl is Owned {
     return rounds[_host][_roundId].results.outcomeWinShares[_outcomeIndex];
   }
 
+  // TODO: refactor to returning struct with ABIEncoderV2
   //                                          numRoundsCreated, numRoundsCancelled, numBets, poolSize
   function getHostStats (address _host) external view returns (uint, uint, uint, uint) {
     HostContext storage hc = hostContext[_host];
@@ -494,6 +510,7 @@ contract Betl is Owned {
     external
     payable
   {
+    // TODO: replace with TipReceived(msg.sender, msg.value); Also add withdrawal function for owner
     revert(); 
   }
 }
