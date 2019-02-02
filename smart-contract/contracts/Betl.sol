@@ -1,5 +1,7 @@
 pragma solidity ^0.5.3;
+pragma experimental ABIEncoderV2;
 
+import './NameRegistry.sol';
 import './external/Owned.sol';
 import './external/SafeMath.sol';
 
@@ -78,20 +80,25 @@ contract Betl is Owned {
     uint totalPoolSize;
   }
 
+  NameRegistry public nameRegistry;
+
   //      host    =>  hash(host,id) => Round
   mapping(address => mapping(bytes4 => Round)) rounds;
 
   //      host    => stats
   mapping(address => HostContext) public hostContext;
 
-  //      name   <=> host
-  mapping(bytes32 => address) public hostAddresses;
-  mapping(address => bytes32) public hostNames;
-
   modifier roundExists(address _host, bytes4 _roundId) {
     //require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
     _;
   }
+
+  constructor(address _nameRegistry)
+    public
+  {
+    require(_nameRegistry != address(0));
+    nameRegistry = NameRegistry(_nameRegistry);
+  } 
 
   function getRound(address _host, bytes4 _roundId) private view returns (Round storage) {
     Round storage r = rounds[_host][_roundId];
@@ -259,14 +266,14 @@ contract Betl is Owned {
     Round storage r = getRound(_host, _roundId);
     require(r.status == Status.FINISHED);
     
-    uint myPayout;
+    uint payout;
 
     for (uint i = 0; i < r.outcomes.outcomes.length; i++) {
       uint outcomeShare = r.results.outcomeWinShares[i];
 
       if (outcomeShare == 0) continue;
    
-      uint myOutcomePayout = getMyPayoutForOutcome(
+      uint myOutcomePayout = getPayoutForOutcome(
           r.playerBets[i][msg.sender],
           outcomeShare,
           r.outcomePools[i],
@@ -274,7 +281,7 @@ contract Betl is Owned {
       );
 
       if (myOutcomePayout > 0) {
-        myPayout = myPayout.add(myOutcomePayout);
+        payout = payout.add(myOutcomePayout);
 
         // Reset player bets so that they can't be claimed again
         r.playerBets[i][msg.sender] = 0;
@@ -287,9 +294,9 @@ contract Betl is Owned {
       }
     }
 
-    require(myPayout > 0);
+    require(payout > 0);
 
-    msg.sender.transfer(myPayout);
+    msg.sender.transfer(payout);
   }
 
   function claimRefund(address _host, bytes4 _roundId) external {
@@ -308,17 +315,16 @@ contract Betl is Owned {
     msg.sender.transfer(myRefund);
   }
 
-  function getMyPayoutForOutcome(uint _myBet, uint _outcomeShare, uint _outcomePool, uint _roundPool) pure private returns (uint) {
-    if (_myBet > 0) {
-      uint myOutcomeShare = (_myBet*1e20).div(_outcomePool);
+  function getPayoutForOutcome(uint _bet, uint _outcomeShare, uint _outcomePool, uint _roundPool) pure private returns (uint) {
+    if (_bet > 0 && _outcomePool > 0) {
+      uint outcomeShare = (_bet*1e20).div(_outcomePool);
 
-      uint myOutcomePayout = _roundPool
+      // payout = msg.sender's share of the outcome's pool times the outcome's share of the total distribution
+      return _roundPool
           .mul(_outcomeShare)
           .div(100)
-          .mul(myOutcomeShare)
+          .mul(outcomeShare)
           .div(1e20);
-
-      return myOutcomePayout;
     }
     return 0;
   }
@@ -335,7 +341,7 @@ contract Betl is Owned {
 
 
   ///
-  /// Getters used by UI
+  /// Getters used in UI
   ///
 
   function getRoundInfo(
@@ -387,8 +393,8 @@ contract Betl is Owned {
   }
 
   function getRoundOutcomeByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (bytes32) {
-    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getRoundOutcome(hostAddresses[_hostName], _roundId, _outcomeIndex);
+    require(nameRegistry.isRegisteredName(_hostName), HOST_NAME_NOT_FOUND);
+    return getRoundOutcome(nameRegistry.addresses[_hostName], _roundId, _outcomeIndex);
   }
   
   function getRoundOutcome(address _host, bytes4 _roundId, uint _outcomeIndex) public view roundExists(_host, _roundId) returns (bytes32) {
@@ -398,8 +404,8 @@ contract Betl is Owned {
   }
 
   function getRoundOutcomePoolByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
-    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getRoundOutcomePool(hostAddresses[_hostName], _roundId, _outcomeIndex);
+    require(nameRegistry.isRegisteredName(_hostName), HOST_NAME_NOT_FOUND);
+    return getRoundOutcomePool(nameRegistry.addresses[_hostName], _roundId, _outcomeIndex);
   }
   
   function getRoundOutcomePool(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
@@ -407,8 +413,8 @@ contract Betl is Owned {
   }
 
   function getRoundOutcomeNumBetsByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
-    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getRoundOutcomeNumBets(hostAddresses[_hostName], _roundId, _outcomeIndex);
+    require(nameRegistry.isRegisteredName(_hostName), HOST_NAME_NOT_FOUND);
+    return getRoundOutcomeNumBets(nameRegistry.addresses[_hostName], _roundId, _outcomeIndex);
   }
   
   function getRoundOutcomeNumBets(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
@@ -416,8 +422,8 @@ contract Betl is Owned {
   }
 
   function getMyRoundOutcomeBetByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
-    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getMyRoundOutcomeBet(hostAddresses[_hostName], _roundId, _outcomeIndex);
+    require(nameRegistry.isRegisteredName(_hostName), HOST_NAME_NOT_FOUND);
+    return getMyRoundOutcomeBet(nameRegistry.addresses[_hostName], _roundId, _outcomeIndex);
   }
   
   function getMyRoundOutcomeBet(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
@@ -426,91 +432,23 @@ contract Betl is Owned {
   }
 
   function getRoundOutcomeWinShareByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
-    require(hostAddresses[_hostName] != address(0), HOST_NAME_NOT_FOUND);
-    return getRoundOutcomeWinShare(hostAddresses[_hostName], _roundId, _outcomeIndex);
+    require(nameRegistry.isRegisteredName(_hostName), HOST_NAME_NOT_FOUND);
+    return getRoundOutcomeWinShare(nameRegistry.addresses[_hostName], _roundId, _outcomeIndex);
   }
   
   function getRoundOutcomeWinShare(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
     return rounds[_host][_roundId].results.outcomeWinShares[_outcomeIndex];
   }
 
-  // TODO: refactor to returning struct with ABIEncoderV2
-  //                                          numRoundsCreated, numRoundsCancelled, numBets, poolSize
-  function getHostStats (address _host) external view returns (uint, uint, uint, uint) {
-    HostContext storage hc = hostContext[_host];
-    return (
-      hc.numRoundsSuccess,
-      hc.numRoundsCancelled,
-      hc.totalNumBets,
-      hc.totalPoolSize
-    );
-  }
-
-
-  ///
-  /// Management of `Username <-> address` mapping
-  ///
-
-  function registerRecord(bytes32 _name)
-    public
-  {
-    require(hostAddresses[_name] == address(0));
-    require(hostNames[msg.sender] == bytes32(0));
-
-    _setRecord(msg.sender, _name);
-  }
-
-  function deleteRecord()
-    public
-  {
-    bytes32 oldName = hostNames[msg.sender];
-    require(oldName[0] != 0);
-
-    _removeRecord(msg.sender, oldName);
-  }
-
-  function updateRecord(bytes32 _newName)
-    external
-  {
-    deleteRecord();
-    registerRecord(_newName);
-  }
-
-  function sudoDeleteRecord(bytes32 _name)
-    external
-    onlyOwner
-  {
-    address affectedAddress = hostAddresses[_name];
-    require(affectedAddress == address(0));
-
-    _removeRecord(affectedAddress, _name);
-  }
-
-  function _setRecord(
-    address _address,
-    bytes32 _name
-  )
-    private
-  {
-    hostAddresses[_name] = _address;
-    hostNames[_address] = _name;
-  }
-
-  function _removeRecord(
-    address _address,
-    bytes32 _name
-  )
-    private
-  {
-    delete hostAddresses[_name];
-    delete hostNames[_address];
+  // TODO: Check if public getter can do this already
+  function getHostContext(address _host) external view returns (HostContext memory) {
+    return hostContext[_host];
   }
 
   function ()
     external
     payable
   {
-    // TODO: replace with TipReceived(msg.sender, msg.value); Also add withdrawal function for owner
-    revert(); 
+    // Do not revert to allow for tips in ETH
   }
 }
