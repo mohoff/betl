@@ -7,8 +7,12 @@ import './external/SafeMath.sol';
 
 
 /**
- * BETL
+ * WARNING: This source code is unaudited. Operating BETL can require an online gambling license
+ * depending on your jurisdiction.
+ *
  * 
+ * BETL
+ *
  * A smart contract to allow hosts to create betting rounds for their audience. A round is
  * represented by a question and an exhaustive set of possible answers or outcomes. Players,
  * which form the audience, participate by placing their bets while the round is open.
@@ -27,16 +31,13 @@ import './external/SafeMath.sol';
  * (80,20,0,0) or (50,25,15,10).
  * 
  * By using a name registry, hosts can register human-readable names with their Ethereum
- * addresses. This allows easier discoverability by players.
- *
- * WARNING: This source code is unaudited an untested
+ * address. This allows easier host discoverability by players.
  */
 contract Betl is Owned {
   using SafeMath for uint;
 
   uint private constant FEE_PERCENT = 1;
   uint private constant MIN_TIMEOUT = 1 minutes;
-  uint private constant MODE_WHATEVER = 0;       // usecase for modes?
   uint private constant MAX_OUTCOMES = 10;
 
   enum Status {
@@ -53,6 +54,7 @@ contract Betl is Owned {
   // TODO: Extend, doublecheck rationale
   string constant HOST_NAME_NOT_FOUND = 'HOST_NAME_NOT_FOUND';
   string constant HOST_OR_ROUND_NOT_FOUND = 'HOST_OR_ROUND_NOT_FOUND';
+  string constant REGISTRY_CANNOT_BE_ZERO = 'REGISTRY_CANNOT_BE_ZERO';
 
   event RoundCreated(address indexed host, bytes4 roundId);
   event RoundFinished(address indexed host, bytes4 roundId);
@@ -122,7 +124,7 @@ contract Betl is Owned {
   constructor(NameRegistry _nameRegistry)
     public
   {
-    require(_nameRegistry != NameRegistry(0));
+    require(_nameRegistry != NameRegistry(0), REGISTRY_CANNOT_BE_ZERO);
     nameRegistry = _nameRegistry;
   } 
 
@@ -162,11 +164,11 @@ contract Betl is Owned {
     payable
     returns (bytes4)
   {
-    require(_configData[0] == 0 || _configData[0] > now);
-    require(_configData[1] >= MIN_TIMEOUT);
-    require(_outcomes.length >= 2 && _outcomes.length <= MAX_OUTCOMES);
-    require(_configData[3] <= 100);
-    require(_payoutTiers.length <= _outcomes.length);
+    require(_configData[0] == 0 || _configData[0] > now, 'CANNOT_BE_SCHEDULED_FOR_PAST');
+    require(_configData[1] >= MIN_TIMEOUT, 'TIMEOUT_TOO_SHORT');
+    require(_outcomes.length >= 2 && _outcomes.length <= MAX_OUTCOMES, 'INVALID_NUMBER_OF_OUTCOMES');
+    require(_configData[3] <= 100, 'HOST_FEE_CANNOT_EXCEED_100');
+    require(_payoutTiers.length <= _outcomes.length, 'OUTCOME_PAYOUTTIER_MISMATCH');
 
     Status status = Status.OPEN;
 
@@ -215,11 +217,11 @@ contract Betl is Owned {
     payable
   {
     Round storage r = getRound(_host, _roundId);
-    require(r.status == Status.OPEN);
+    require(r.status == Status.OPEN, 'ROUND_NOT_OPEN');
 
-    require(msg.value > 0 && msg.value >= r.minBet);
-    require(_outcomeIndex < r.outcomes.outcomes.length);
-    require(r.timeoutAt == 0 || now < r.timeoutAt); // TODO: refactor to checkTimeout/checkStatus modifier?
+    require(msg.value > 0 && msg.value >= r.minBet, 'BET_TOO_SMALL');
+    require(_outcomeIndex < r.outcomes.outcomes.length, 'INVALID_OUTCOME');
+    require(r.timeoutAt == 0 || now < r.timeoutAt, 'ROUND_TIMED_OUT');
   
     r.playerBets[_outcomeIndex][msg.sender] = r.playerBets[_outcomeIndex][msg.sender].add(msg.value);
     r.outcomePools[_outcomeIndex] = r.outcomePools[_outcomeIndex].add(msg.value);
@@ -236,9 +238,9 @@ contract Betl is Owned {
     payable
   {
     Round storage r = getRound(msg.sender, _roundId);
-    require(r.status == Status.OPEN || r.status == Status.CLOSED);
-    require(_picks.length == r.outcomes.outcomes.length);
-    require(now < r.timeoutAt); // TODO: add modifier checkTimeout/checkStatus ?
+    require(r.status == Status.OPEN || r.status == Status.CLOSED, 'ROUND_NOT_OPEN_OR_CLOSED');
+    require(_picks.length == r.outcomes.outcomes.length, 'INVALID_NUMBER_OF_PICKS');
+    require(now < r.timeoutAt, 'ROUND_TIMED_OUT');
 
     uint poolSize = r.stats.poolSize;
     uint ownerFee = poolSize.mul(FEE_PERCENT).div(100);
@@ -252,7 +254,7 @@ contract Betl is Owned {
 
       if(outcomeShare == 0) continue;
 
-      require(outcomeShare <= 100);
+      require(outcomeShare <= 100, 'INVALID_PICK_PERCENTAGE');
       allShares += outcomeShare;
 
       // populate lookup to simplify getter function `getRoundOutcomeWinShare`
@@ -261,7 +263,7 @@ contract Betl is Owned {
       // Register `outcomeShare` percent of `payoutPool` to payouts of iterated outcome
       r.results.payouts[i] = payoutPool.mul(outcomeShare).div(100);
     }
-    require(allShares == 100);
+    require(allShares == 100, 'INVALID_PICK_CONFIG');
 
     hostContext[msg.sender].totalNumBets = hostContext[msg.sender].totalNumBets.add(r.stats.numBets);
     hostContext[msg.sender].totalPoolSize = hostContext[msg.sender].totalPoolSize.add(r.stats.poolSize);
@@ -283,7 +285,7 @@ contract Betl is Owned {
 
   function claimPayout(address _host, bytes4 _roundId) external {
     Round storage r = getRound(_host, _roundId);
-    require(r.status == Status.FINISHED);
+    require(r.status == Status.FINISHED, 'ROUND_NOT_FINISHED');
     
     uint payout;
 
@@ -313,25 +315,25 @@ contract Betl is Owned {
       }
     }
 
-    require(payout > 0);
+    require(payout > 0, 'NO_PAYOUT_TO_CLAIM');
 
     msg.sender.transfer(payout);
   }
 
   function claimRefund(address _host, bytes4 _roundId) external {
     Round storage r = getRound(_host, _roundId);
-    require(r.status == Status.CANCELLED || r.status == Status.TIMEOUT, "Round is neither cancelled nor timed out");
+    require(r.status == Status.CANCELLED || r.status == Status.TIMEOUT, 'ROUND_NOT_CANCELLED_OR_TIMED_OUT');
 
-    uint myRefund;
+    uint refund;
 
     for(uint i = 0; i < r.outcomes.outcomes.length; i++) {
-      myRefund = myRefund.add(r.playerBets[i][msg.sender]);
+      refund = refund.add(r.playerBets[i][msg.sender]);
       r.playerBets[i][msg.sender] = 0;
     }
 
-    require(myRefund > 0, "No refunds to be claimed");
+    require(refund > 0, "NO_REFUND_TO_CLAIM");
 
-    msg.sender.transfer(myRefund);
+    msg.sender.transfer(refund);
   }
 
   function getPayoutForOutcome(uint _bet, uint _outcomeShare, uint _outcomePool, uint _roundPool) pure private returns (uint) {
@@ -350,7 +352,7 @@ contract Betl is Owned {
 
   function cancelRound(bytes4 _roundId) external {
     Round storage r = getRound(msg.sender, _roundId);
-    require(r.status == Status.SCHEDULED || r.status == Status.OPEN, "Round cannot be cancelled");
+    require(r.status == Status.SCHEDULED || r.status == Status.OPEN, "ROUND_CANNOT_BE_CANCELLED");
 
     rounds[msg.sender][_roundId].status = Status.CANCELLED;
     hostContext[msg.sender].numRoundsCancelled = hostContext[msg.sender].numRoundsCancelled.add(1);
@@ -413,31 +415,31 @@ contract Betl is Owned {
   
   function getRoundOutcome(address _host, bytes4 _roundId, uint _outcomeIndex) public view roundExists(_host, _roundId) returns (bytes32) {
     Round storage r = getRound(_host, _roundId);
-    require(_outcomeIndex < r.outcomes.outcomes.length);
+    require(_outcomeIndex < r.outcomes.outcomes.length, 'INVALID_OUTCOME');
     return r.outcomes.outcomes[_outcomeIndex];
   }
   
   function getRoundOutcomePool(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
     Round storage r = getRound(_host, _roundId);
-    require(_outcomeIndex < r.outcomes.outcomes.length);
+    require(_outcomeIndex < r.outcomes.outcomes.length, 'INVALID_OUTCOME');
     return r.outcomePools[_outcomeIndex];
   }
   
   function getRoundOutcomeNumBets(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
     Round storage r = getRound(_host, _roundId);
-    require(_outcomeIndex < r.outcomes.outcomes.length);
+    require(_outcomeIndex < r.outcomes.outcomes.length, 'INVALID_OUTCOME');
     return r.outcomeNumBets[_outcomeIndex];
   }
   
   function getRoundOutcomeBet(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
     Round storage r = getRound(_host, _roundId);
-    require(_outcomeIndex < r.outcomes.outcomes.length);
+    require(_outcomeIndex < r.outcomes.outcomes.length, 'INVALID_OUTCOME');
     return r.playerBets[_outcomeIndex][msg.sender];
   }
   
   function getRoundOutcomeWinShare(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
     Round storage r = getRound(_host, _roundId);
-    require(_outcomeIndex < r.outcomes.outcomes.length);
+    require(_outcomeIndex < r.outcomes.outcomes.length, 'INVALID_OUTCOME');
     return r.results.outcomeWinShares[_outcomeIndex];
   }
 
