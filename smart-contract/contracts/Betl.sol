@@ -23,8 +23,8 @@ import './external/SafeMath.sol';
  * In comparison, "What is my rank by the end of this season?" likely represents a non-
  * binary round. Considering the outcomes "1st", "2nd", "3rd", and "4th or lower", the host
  * can decide payout distributions as (100,0,0,0). This means the winning outcome allocates
- * 100% of the pool. Alternatively, "close bets" can be rewarded as well with (80,20,0,0) or
- * even (50,25,15,10) as payout allocations.
+ * 100% of the pool. Alternatively, "close bets" can be rewarded as well with tiers as
+ * (80,20,0,0) or (50,25,15,10).
  * 
  * By using a name registry, hosts can register human-readable names with their Ethereum
  * addresses. This allows easier discoverability by players.
@@ -60,9 +60,7 @@ contract Betl is Owned {
 
   struct Outcomes {
     bytes32[] outcomes;
-    // Specifies payout distributions in case multiple winners are possible
-    // Example: When there are 3 winners, this array can be [60, 30, 10] ==> in percents, must sum to 100.
-    // winnerTiers.length <= numOutcomes
+    // Specifies payout distributions per totally or relatively winning outcome
     uint[] payoutTiers;
     //bool hasFlexOutcomes;
   }
@@ -85,17 +83,18 @@ contract Betl is Owned {
     uint endedAt;
     uint timeoutAt;
     uint minBet;
-    uint hostBonus; // or: add directly to roundstats += hostBonus
+    uint hostBonus;
     uint hostFee;   // in percent
 
     bytes32 question;
     Outcomes outcomes;
     Results results;
     Stats stats;
-    // outcomeIndex =>         player  => bet
+    // outcomeIndex =>      player  => bet
     mapping(uint => mapping(address => uint)) playerBets;
-    // outcomeIndex => totalBets
+    // outcomeIndex => pool size
     mapping(uint => uint) outcomePools;
+    // outcomeIndex => number of bets
     mapping(uint => uint) outcomeNumBets;
   }
 
@@ -116,7 +115,7 @@ contract Betl is Owned {
   mapping(address => HostContext) public hostContext;
 
   modifier roundExists(address _host, bytes4 _roundId) {
-    //require(rounds[_host][_roundId].status != Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
+    require(rounds[_host][_roundId].status > Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
     _;
   }
 
@@ -129,48 +128,39 @@ contract Betl is Owned {
 
   function getRound(address _host, bytes4 _roundId) private view returns (Round storage) {
     Round storage r = rounds[_host][_roundId];
-    // verify existance of round
-    Status status = r.status;
-    require(status > Status.UNDEFINED);
+    // verify existance of round without modifier `roundExists` to save gas
+    require(r.status > Status.UNDEFINED, HOST_OR_ROUND_NOT_FOUND);
 
     return r;
   }
 
-  // Frontend helper
-  function getNextRoundNumber(address _host) external view returns (uint) {
-    return hostContext[_host].nextRoundNumber;
-  }
-  function getRoundIdForRoundNumber(address _host, uint _roundNumber) external pure returns (bytes4) {
-    bytes32 hash = keccak256(abi.encodePacked(_host, _roundNumber));
-    return bytes4(hash);
-  }
-
   // Frontend needs to fetch roundId of created round.
-  function getNextRoundId(address _host) public view returns (bytes4) {
-    bytes32 hash = keccak256(abi.encodePacked(_host, hostContext[_host].nextRoundNumber));
-    return bytes4(hash);
+  function createNextRoundId(address _host, uint _offset) public view returns (bytes4, uint) {
+    bytes4 nextRoundId = bytes4(keccak256(abi.encodePacked(_host, hostContext[_host].nextRoundNumber + _offset)));
+
+    // In case `nextRoundId` exists already (chance is 1:4.3e9), recursively call this function again with offset
+    return rounds[_host][nextRoundId].status == Status.UNDEFINED
+      ? (nextRoundId, _offset)
+      : createNextRoundId(_host, _offset + 1);
   }
 
-  function generateNewRoundForHost(address _host) private returns (uint, bytes4) {
-    uint roundNumber = hostContext[_host].nextRoundNumber;
-    bytes4 roundId = getNextRoundId(_host);
-    hostContext[_host].nextRoundNumber += 1;
+  function createNewRoundIdForHost(address _host) private returns (uint, bytes4) {
+    (bytes4 createdRoundId, uint offset) = createNextRoundId(_host, 0);
+    hostContext[_host].nextRoundNumber = hostContext[_host].nextRoundNumber.add(1 + offset);
   
-    return (roundNumber, roundId);
+    return (hostContext[_host].nextRoundNumber, createdRoundId);
   }
 
-  // ADD/TODO/TOTHINK?:
-  // - modeCode usefulness? e.g. 'winner-takes-it-all', '80-20', '66-33', '66-25-9', '50-25-12.5-6.25-3.125'
-  // configData[ scheduledAt, timeout, minBet, hostShare ]
   // COSTS: 294518 gas -> @ 5Gwei: 1 dollar
   function createRound(
     bytes32 _question,
     bytes32[] calldata _outcomes,
     uint[4] calldata _configData, // array of format `[scheduledAt, timeout, minBet, hostFeeInPercent]`
-    uint[] calldata _payoutTiers
+    uint[] calldata _payoutTiers  // Pre-defined 'round modes' can be offered on the UI-level
   )
     external
     payable
+    returns (bytes4)
   {
     require(_configData[0] == 0 || _configData[0] > now);
     require(_configData[1] >= MIN_TIMEOUT);
@@ -194,7 +184,7 @@ contract Betl is Owned {
       poolSize: msg.value
     });
 
-    (uint roundNumber, bytes4 roundId) = generateNewRoundForHost(msg.sender);
+    (uint roundNumber, bytes4 roundId) = createNewRoundIdForHost(msg.sender);
 
     rounds[msg.sender][roundId] = Round({
       roundNumber: roundNumber,
@@ -212,6 +202,8 @@ contract Betl is Owned {
     });
 
     emit RoundCreated(msg.sender, roundId);
+
+    return roundId;
   }
 
   function bet(
