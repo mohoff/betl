@@ -5,6 +5,32 @@ import './NameRegistry.sol';
 import './external/Owned.sol';
 import './external/SafeMath.sol';
 
+
+/**
+ * BETL
+ * 
+ * A smart contract to allow hosts to create betting rounds for their audience. A round is
+ * represented by a question and an exhaustive set of possible answers or outcomes. Players,
+ * which form the audience, participate by placing their bets while the round is open.
+ * After a round is decided by the host, players can claim pending payouts. Depending on the
+ * round mode, a round can have multiple winning outcomes with different payout allocations.
+ *
+ * For example: "Will I rank top5 by end of this competitive season?" associates a binary
+ * round with the outcomes "Yes" and "No". Both outcomes are mutually exclusive, while the
+ * outcome space is exhausted. The payout allocation in percent is denoted as (100,0), where
+ * the first number represents the allocation of the winning outcome.
+ * 
+ * In comparison, "What is my rank by the end of this season?" likely represents a non-
+ * binary round. Considering the outcomes "1st", "2nd", "3rd", and "4th or lower", the host
+ * can decide payout distributions as (100,0,0,0). This means the winning outcome allocates
+ * 100% of the pool. Alternatively, "close bets" can be rewarded as well with (80,20,0,0) or
+ * even (50,25,15,10) as payout allocations.
+ * 
+ * By using a name registry, hosts can register human-readable names with their Ethereum
+ * addresses. This allows easier discoverability by players.
+ *
+ * WARNING: This source code is unaudited an untested
+ */
 contract Betl is Owned {
   using SafeMath for uint;
 
@@ -24,6 +50,7 @@ contract Betl is Owned {
   }
 
   // Errors
+  // TODO: Extend, doublecheck rationale
   string constant HOST_NAME_NOT_FOUND = 'HOST_NAME_NOT_FOUND';
   string constant HOST_OR_ROUND_NOT_FOUND = 'HOST_OR_ROUND_NOT_FOUND';
 
@@ -93,18 +120,18 @@ contract Betl is Owned {
     _;
   }
 
-  constructor(address _nameRegistry)
+  constructor(NameRegistry _nameRegistry)
     public
   {
-    require(_nameRegistry != address(0));
-    nameRegistry = NameRegistry(_nameRegistry);
+    require(_nameRegistry != NameRegistry(0));
+    nameRegistry = _nameRegistry;
   } 
 
   function getRound(address _host, bytes4 _roundId) private view returns (Round storage) {
     Round storage r = rounds[_host][_roundId];
     // verify existance of round
     Status status = r.status;
-    require(status > Status.UNDEFINED && status <= Status.TIMEOUT);
+    require(status > Status.UNDEFINED);
 
     return r;
   }
@@ -287,8 +314,8 @@ contract Betl is Owned {
         r.playerBets[i][msg.sender] = 0;
       }
 
-      // Minor optimization that skips iterations in case an outcome got picked as only
-      // winner (outcomeShare == 100 (%)) which is expected to be true frequently
+      // If the outcome was picked as only winner (outcomeShare == 100 (%)) we can
+      // break out of the loop, as we found the player's total payout already
       if (outcomeShare == 100) {
         break;
       }
@@ -319,7 +346,7 @@ contract Betl is Owned {
     if (_bet > 0 && _outcomePool > 0) {
       uint outcomeShare = (_bet*1e20).div(_outcomePool);
 
-      // payout = msg.sender's share of the outcome's pool times the outcome's share of the total distribution
+      // payout = player's share of the outcome's pool times the outcome's share of the total distribution
       return _roundPool
           .mul(_outcomeShare)
           .div(100)
@@ -391,53 +418,35 @@ contract Betl is Owned {
       r.stats.poolSize
     );
   }
-
-  function getRoundOutcomeByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (bytes32) {
-    require(nameRegistry.isRegisteredName(_hostName), HOST_NAME_NOT_FOUND);
-    return getRoundOutcome(nameRegistry.addresses[_hostName], _roundId, _outcomeIndex);
-  }
   
   function getRoundOutcome(address _host, bytes4 _roundId, uint _outcomeIndex) public view roundExists(_host, _roundId) returns (bytes32) {
     Round storage r = getRound(_host, _roundId);
     require(_outcomeIndex < r.outcomes.outcomes.length);
     return r.outcomes.outcomes[_outcomeIndex];
   }
-
-  function getRoundOutcomePoolByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
-    require(nameRegistry.isRegisteredName(_hostName), HOST_NAME_NOT_FOUND);
-    return getRoundOutcomePool(nameRegistry.addresses[_hostName], _roundId, _outcomeIndex);
-  }
   
   function getRoundOutcomePool(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
-    return rounds[_host][_roundId].outcomePools[_outcomeIndex];
-  }
-
-  function getRoundOutcomeNumBetsByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
-    require(nameRegistry.isRegisteredName(_hostName), HOST_NAME_NOT_FOUND);
-    return getRoundOutcomeNumBets(nameRegistry.addresses[_hostName], _roundId, _outcomeIndex);
+    Round storage r = getRound(_host, _roundId);
+    require(_outcomeIndex < r.outcomes.outcomes.length);
+    return r.outcomePools[_outcomeIndex];
   }
   
   function getRoundOutcomeNumBets(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
-    return rounds[_host][_roundId].outcomeNumBets[_outcomeIndex];
-  }
-
-  function getMyRoundOutcomeBetByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
-    require(nameRegistry.isRegisteredName(_hostName), HOST_NAME_NOT_FOUND);
-    return getMyRoundOutcomeBet(nameRegistry.addresses[_hostName], _roundId, _outcomeIndex);
+    Round storage r = getRound(_host, _roundId);
+    require(_outcomeIndex < r.outcomes.outcomes.length);
+    return r.outcomeNumBets[_outcomeIndex];
   }
   
-  function getMyRoundOutcomeBet(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
+  function getRoundOutcomeBet(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
     Round storage r = getRound(_host, _roundId);
+    require(_outcomeIndex < r.outcomes.outcomes.length);
     return r.playerBets[_outcomeIndex][msg.sender];
-  }
-
-  function getRoundOutcomeWinShareByName(bytes32 _hostName, bytes4 _roundId, uint _outcomeIndex) external view returns (uint) {
-    require(nameRegistry.isRegisteredName(_hostName), HOST_NAME_NOT_FOUND);
-    return getRoundOutcomeWinShare(nameRegistry.addresses[_hostName], _roundId, _outcomeIndex);
   }
   
   function getRoundOutcomeWinShare(address _host, bytes4 _roundId, uint _outcomeIndex) public view returns (uint) {
-    return rounds[_host][_roundId].results.outcomeWinShares[_outcomeIndex];
+    Round storage r = getRound(_host, _roundId);
+    require(_outcomeIndex < r.outcomes.outcomes.length);
+    return r.results.outcomeWinShares[_outcomeIndex];
   }
 
   // TODO: Check if public getter can do this already

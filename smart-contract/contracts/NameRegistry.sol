@@ -5,77 +5,81 @@ import './external/Owned.sol';
 
 contract NameRegistry is Owned {
 
-  // both mappings realize a bidirectional lookup
-  mapping(bytes32 => address) public addresses;
-  mapping(address => bytes32) public names;
+  // realizes a bidirectional lookup
+  mapping(bytes32 => address) public addressOf;
+  mapping(address => bytes32) public nameOf;
 
-  function registerRecord(bytes32 _name)
+  function addName(bytes32 _name)
     public
   {
-    require(addresses[_name] == address(0));
-    require(names[msg.sender] == bytes32(0));
-
-    _setRecord(msg.sender, _name);
+    addRecord(msg.sender, _name);
   }
 
-  function deleteRecord()
+  function removeName()
     public
   {
-    bytes32 oldName = names[msg.sender];
-    require(oldName[0] != 0);
-
-    _removeRecord(msg.sender, oldName);
+    removeRecord(msg.sender, nameOf[msg.sender]);
   }
 
   function updateRecord(bytes32 _newName)
     external
   {
-    deleteRecord();
-    registerRecord(_newName);
+    removeRecord(msg.sender, nameOf[msg.sender]);
+    addRecord(msg.sender, _newName);
+  }
+
+  function sudoAddName(address _address,bytes32 _name)
+    public
+  {
+    addRecord(_address, _name);
   }
 
   function sudoDeleteRecord(bytes32 _name)
     external
     onlyOwner
   {
-    address affectedAddress = addresses[_name];
-    require(affectedAddress == address(0));
-
-    _removeRecord(affectedAddress, _name);
+    removeRecord(addressOf[_name], _name);
   }
 
   function isRegisteredAddress(address _address)
     external
+    view
     returns (bool) 
   {
-    return names[_address] != bytes32(0);
+    return nameOf[_address] != bytes32(0);
   }
 
   function isRegisteredName(bytes32 _name)
     external
+    view
     returns (bool) 
   {
-    return addresses[_name] != address(0);
+    return addressOf[_name] != address(0);
   }
 
-  function _setRecord(
+  function addRecord(
     address _address,
     bytes32 _name
   )
     private
   {
-    addresses[_name] = _address;
-    names[_address] = _name;
+    require(addressOf[_name] == address(0), 'Address already exists');
+    require(nameOf[_address] == bytes32(0), 'Name already exists');
+
+    addressOf[_name] = _address;
+    nameOf[_address] = _name;
   }
 
-  function _removeRecord(
+  function removeRecord(
     address _address,
     bytes32 _name
   )
     private
   {
-    delete addresses[_name];
-    delete names[_address];
+    require(nameOf[_address] != bytes32(0), 'Name does not exist');
+
+    delete addressOf[_name];
+    delete nameOf[_address];
   }
 
   function ()
