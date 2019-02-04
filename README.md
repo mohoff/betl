@@ -11,4 +11,3 @@ Comiling contracts with Truffle's `truffle compile` requires the compiler as doc
 ```sh
 docker pull ethereum/solc:0.5.2
 ```
-
