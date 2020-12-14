@@ -1,6 +1,8 @@
 # `betl`
 
-_Warning: This source code is unaudited. Operating BETL can require an online gambling license depending on your jurisdiction._
+_Warning: This source code is unaudited_
+
+_Note: Operating BETL can require an online gambling license depending on your jurisdiction_
 
 `betl` is a smart contract for the Ethereum blockchain that allows hosts to create betting rounds for their audience.A round is represented by a question and an exhaustive set of possible answers or outcomes. Players, which form the audience, participate by placing their bets while the round is open. After a round is decided by the host, players can claim pending payouts. Depending on the round mode, a round can have multiple winning outcomes with different payout allocations.
 
