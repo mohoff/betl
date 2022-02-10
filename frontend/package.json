@@ -100,7 +100,7 @@
   },
   "devDependencies": {
     "css-loader": "^0.28.7",
-    "node-sass": "^5.0.0",
+    "node-sass": "^7.0.0",
     "postcss-loader": "^2.0.8",
     "react-hot-loader": "^4.3.1",
     "sass-loader": "^10.1.0",
